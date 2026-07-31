@@ -1,0 +1,38 @@
+{
+  "common": {
+    "appName": "VIP",
+    "welcome": "Chào mừng",
+    "home": "Trang chủ",
+    "login": "Đăng nhập",
+    "logout": "Đăng xuất",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "username": "Tài khoản",
+    "password": "Mật khẩu",
+    "online": "Trực tuyến",
+    "offline": "Ngoại tuyến"
+  },
+  "home": {
+    "title": "Trang chủ",
+    "subtitle": "Bảng điều khiển VIP"
+  },
+  "login": {
+    "title": "Đăng nhập hệ thống",
+    "submit": "Đăng nhập",
+    "demoHint": "Demo: admin / 123456"
+  },
+  "changePassword": {
+    "menu": "Đổi mật khẩu",
+    "title": "Đổi mật khẩu",
+    "current": "Mật khẩu hiện tại",
+    "new": "Mật khẩu mới",
+    "confirm": "Xác nhận mật khẩu mới",
+    "submit": "Cập nhật",
+    "required": "Vui lòng nhập đầy đủ thông tin",
+    "mismatch": "Mật khẩu xác nhận không khớp",
+    "tooShort": "Mật khẩu mới phải có ít nhất 6 ký tự",
+    "successTitle": "Đổi mật khẩu thành công",
+    "successDetail": "Mật khẩu của bạn đã được cập nhật",
+    "failed": "Không thể đổi mật khẩu"
+  }
+}

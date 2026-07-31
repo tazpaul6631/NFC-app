@@ -1,0 +1,38 @@
+{
+  "common": {
+    "appName": "VIP",
+    "welcome": "Welcome",
+    "home": "Home",
+    "login": "Login",
+    "logout": "Logout",
+    "save": "Save",
+    "cancel": "Cancel",
+    "username": "Username",
+    "password": "Password",
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "home": {
+    "title": "Home",
+    "subtitle": "VIP Dashboard"
+  },
+  "login": {
+    "title": "Sign in",
+    "submit": "Sign in",
+    "demoHint": "Demo: admin / 123456"
+  },
+  "changePassword": {
+    "menu": "Change password",
+    "title": "Change password",
+    "current": "Current password",
+    "new": "New password",
+    "confirm": "Confirm new password",
+    "submit": "Update",
+    "required": "Please fill in all fields",
+    "mismatch": "Password confirmation does not match",
+    "tooShort": "New password must be at least 6 characters",
+    "successTitle": "Password updated",
+    "successDetail": "Your password has been changed successfully",
+    "failed": "Unable to change password"
+  }
+}

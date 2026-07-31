@@ -1,0 +1,152 @@
+/* Global VIP theme — áp dụng palette gradient cho toàn app */
+
+.main-layout {
+  background: var(--vip-bg-gradient);
+}
+
+/* Cards */
+.p-card.p-component {
+  position: relative;
+  overflow: hidden;
+  background: var(--vip-gradient-surface);
+  border: 1px solid var(--vip-border);
+  box-shadow: var(--vip-shadow-2), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  border-radius: var(--p-card-border-radius);
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: var(--vip-gradient-brand);
+    opacity: 0.85;
+  }
+
+  &:hover {
+    box-shadow: var(--vip-shadow-3), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  }
+}
+
+.p-breadcrumb {
+  background: var(--vip-gradient-surface);
+  border: 1px solid var(--vip-border);
+  box-shadow: var(--vip-shadow-1);
+}
+
+/* Primary buttons */
+.p-button:not(.p-button-text):not(.p-button-link):not(.p-button-outlined):not(.p-button-secondary):not(.p-button-danger):not(.p-button-success):not(.p-button-warn):not(.p-button-info):not(.p-button-help):not(.p-button-contrast) {
+  border: none;
+  background: var(--vip-gradient-primary);
+  box-shadow: var(--vip-shadow-primary);
+
+  &:hover:not(:disabled) {
+    background: var(--vip-gradient-primary-hover);
+    box-shadow: var(--vip-shadow-primary-hover);
+  }
+}
+
+.p-button.p-button-outlined {
+  border-color: rgba(37, 99, 235, 0.35);
+  color: var(--vip-accent-blue);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--vip-shadow-1);
+
+  &:hover:not(:disabled) {
+    background: rgba(37, 99, 235, 0.06);
+    border-color: rgba(37, 99, 235, 0.5);
+    box-shadow: var(--vip-shadow-2);
+  }
+}
+
+.p-inputtext,
+.p-password,
+.p-select,
+.p-multiselect,
+.p-datepicker {
+  border-color: var(--vip-border);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--vip-shadow-1);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+
+  &:hover:not(:disabled):not(.p-disabled) {
+    border-color: var(--vip-border-strong);
+    box-shadow: var(--vip-shadow-2);
+  }
+
+  &:focus,
+  &.p-focus,
+  &.p-inputwrapper-focus {
+    border-color: rgba(37, 99, 235, 0.45);
+    box-shadow: var(--vip-shadow-2), var(--vip-focus-ring);
+  }
+}
+
+.p-tag {
+  box-shadow: var(--vip-shadow-1);
+}
+
+.p-avatar {
+  background: var(--vip-gradient-primary);
+  color: #fff;
+  box-shadow: var(--vip-shadow-1);
+}
+
+.p-drawer {
+  box-shadow: var(--vip-shadow-5);
+}
+
+.p-menu,
+.p-select-overlay,
+.p-multiselect-overlay,
+.p-datepicker-panel {
+  border: 1px solid var(--vip-border);
+  background: var(--vip-gradient-surface);
+  box-shadow: var(--vip-shadow-4);
+}
+
+.p-toast,
+.p-confirmdialog {
+  box-shadow: var(--vip-shadow-4);
+}
+
+.p-datatable {
+  box-shadow: var(--vip-shadow-1);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--vip-border);
+}
+
+/* Page patterns */
+.home h1,
+.page-header h1 {
+  background: var(--vip-gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.home .stat-body i,
+.not-found i {
+  background: var(--vip-gradient-icon);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.tile-title i {
+  background: var(--vip-gradient-icon);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.not-found {
+  min-height: 100%;
+  background:
+    radial-gradient(ellipse 50% 40% at 50% 30%, rgba(37, 99, 235, 0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 35% at 20% 70%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+}

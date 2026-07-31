@@ -1,0 +1,154 @@
+:root {
+  --vip-sidebar-width: 200px;
+  --vip-sidebar-collapsed: 72px;
+  --vip-header-height: 64px;
+
+  /*
+   * System UI insets (status bar / notch / home indicator / nav bar)
+   * Capacitor 8 SystemBars injects CSS vars --safe-area-inset-* on Android
+   * (env() is often 0 in Android WebView). Prefer those, then env() for iOS/web.
+   */
+  --vip-safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --vip-safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --vip-safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --vip-safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+
+  /* Brand palette */
+  --vip-accent-blue: #2563eb;
+  --vip-accent-green: #10b981;
+  --vip-accent-cyan: #22d3ee;
+  --vip-accent-indigo: #6366f1;
+  --vip-primary: var(--vip-accent-blue);
+  --vip-primary-dark: #1d4ed8;
+  --vip-indigo-dark: #4f46e5;
+
+  --vip-bg: #eef4ff;
+  --vip-surface: #ffffff;
+  --vip-surface-soft: #fafcff;
+  --vip-surface-muted: #f1f5ff;
+  --vip-border: rgba(37, 99, 235, 0.12);
+  --vip-border-strong: rgba(37, 99, 235, 0.2);
+  --vip-text: #0f172a;
+  --vip-muted: #64748b;
+
+  --vip-gradient-brand: linear-gradient(90deg,
+      var(--vip-accent-green) 0%,
+      var(--vip-accent-blue) 45%,
+      var(--vip-accent-cyan) 100%);
+  --vip-gradient-primary: linear-gradient(135deg,
+      var(--vip-accent-blue) 0%,
+      var(--vip-accent-indigo) 100%);
+  --vip-gradient-primary-hover: linear-gradient(135deg,
+      var(--vip-primary-dark) 0%,
+      var(--vip-indigo-dark) 100%);
+  --vip-gradient-surface: linear-gradient(165deg,
+      var(--vip-surface) 0%,
+      var(--vip-surface-soft) 42%,
+      var(--vip-surface-muted) 100%);
+  --vip-gradient-text: linear-gradient(135deg, var(--vip-text) 0%, #1e40af 100%);
+  --vip-gradient-icon: linear-gradient(135deg, var(--vip-accent-green), var(--vip-accent-blue));
+  --vip-gradient-nav-active: linear-gradient(135deg,
+      rgba(16, 185, 129, 0.14) 0%,
+      rgba(37, 99, 235, 0.16) 100%);
+  --vip-gradient-nav-hover: linear-gradient(135deg,
+      rgba(34, 211, 238, 0.08) 0%,
+      rgba(37, 99, 235, 0.08) 100%);
+
+  --vip-bg-gradient:
+    radial-gradient(ellipse 70% 55% at 12% 18%, rgba(37, 99, 235, 0.16) 0%, transparent 58%),
+    radial-gradient(ellipse 55% 45% at 88% 12%, rgba(16, 185, 129, 0.12) 0%, transparent 52%),
+    radial-gradient(ellipse 50% 42% at 78% 82%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse 45% 38% at 8% 78%, rgba(34, 211, 238, 0.08) 0%, transparent 48%),
+    linear-gradient(145deg, #eef4ff 0%, #f6f9fd 35%, #f0f4fa 68%, #e9eef6 100%);
+
+  --vip-shadow-1: 0 1px 2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --vip-shadow-2: 0 2px 6px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.05);
+  --vip-shadow-3: 0 4px 10px rgba(15, 23, 42, 0.08), 0 10px 24px rgba(15, 23, 42, 0.06);
+  --vip-shadow-4: 0 8px 20px rgba(15, 23, 42, 0.1), 0 16px 40px rgba(15, 23, 42, 0.08);
+  --vip-shadow-5: 0 12px 28px rgba(15, 23, 42, 0.12), 0 24px 56px rgba(15, 23, 42, 0.1);
+  --vip-shadow-sidebar: 4px 0 24px rgba(15, 23, 42, 0.08);
+  --vip-shadow-topbar: 0 2px 16px rgba(15, 23, 42, 0.07);
+  --vip-shadow-primary: 0 4px 14px rgba(37, 99, 235, 0.28);
+  --vip-shadow-primary-hover: 0 6px 18px rgba(37, 99, 235, 0.34);
+  --vip-focus-ring: 0 0 0 2px rgba(37, 99, 235, 0.14);
+
+  --vip-font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ion-font-family: var(--vip-font-family);
+
+  --p-card-border-radius: 10px;
+}
+
+html,
+body,
+#app,
+ion-app {
+  height: 100%;
+  margin: 0;
+  font-family: var(--vip-font-family);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  color: var(--vip-text);
+  background: var(--vip-bg-gradient);
+}
+
+ion-app {
+  background: var(--vip-bg-gradient);
+}
+
+/* PrimeVue — inherit app font (keep primeicons on icon glyphs) */
+.p-component,
+.p-inputtext,
+.p-button,
+.p-select,
+.p-select-label,
+.p-password-input,
+.p-menu,
+.p-menuitem,
+.p-breadcrumb,
+.p-tag,
+.p-datatable,
+.p-dialog,
+.p-drawer,
+.p-toast {
+  font-family: inherit;
+}
+
+.page-scroll-container {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.page-scroll-container.settings .settings-card {
+  min-height: 100%;
+}
+
+.vip-brand-icon {
+  background: var(--vip-gradient-icon);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.vip-gradient-text {
+  background: var(--vip-gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.vip-accent-icon {
+  background: var(--vip-gradient-icon);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
