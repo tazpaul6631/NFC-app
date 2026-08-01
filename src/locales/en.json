@@ -6,7 +6,7 @@
     "login": "Login",
     "logout": "Logout",
     "save": "Save",
-    "cancel": "Cancel",
+    "cancel": "Close",
     "username": "Username",
     "password": "Password",
     "online": "Online",
@@ -18,8 +18,7 @@
   },
   "login": {
     "title": "Sign in",
-    "submit": "Sign in",
-    "demoHint": "Demo: admin / 123456"
+    "submit": "Sign in"
   },
   "changePassword": {
     "menu": "Change password",
@@ -34,5 +33,35 @@
     "successTitle": "Password updated",
     "successDetail": "Your password has been changed successfully",
     "failed": "Unable to change password"
+  },
+  "settings": {
+    "title": "Settings",
+    "nfc": {
+      "title": "NFC",
+      "subtitle": "Scan Mifare / NFC cards",
+      "start": "Start NFC scan",
+      "stop": "Stop scan",
+      "openSettings": "Open NFC settings",
+      "scanningToast": "Ready — hold a card near the device",
+      "lastScan": "Last card",
+      "code": "Code",
+      "type": "Type",
+      "uid": "UID",
+      "statusMap": {
+        "ready": "Ready",
+        "scanning": "Scanning…",
+        "disabled": "NFC off",
+        "unsupported": "No NFC",
+        "web": "Device only",
+        "unknown": "Unknown"
+      },
+      "errors": {
+        "NFC_WEB_ONLY": "NFC only works on a real Android device with NFC.",
+        "NFC_UNSUPPORTED": "This device has no NFC hardware.",
+        "NFC_DISABLED": "NFC is turned off. Enable it in system settings.",
+        "UID_NOT_4_BYTE": "UID is {length} bytes — card-number formula needs a 4-byte tag.",
+        "GENERIC": "Unable to start NFC scan"
+      }
+    }
   }
 }

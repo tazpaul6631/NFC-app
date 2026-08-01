@@ -3,7 +3,7 @@
     <!-- Sidebar desktop / tablet -->
     <aside v-show="!isMobile" class="sidebar" :class="{ collapsed: sidebarCollapsed }">
       <button type="button" class="sidebar-brand" :title="t('common.home')" @click="go('/home')">
-        <i class="pi pi-shield brand-icon vip-brand-icon" />
+        <i class="pi pi-shield brand-icon vip-brand-icon" aria-hidden="true" />
         <span class="brand-text">{{ t('common.appName') }}</span>
       </button>
 
@@ -17,19 +17,22 @@
     </aside>
 
     <!-- Mobile drawer -->
-    <Drawer v-model:visible="mobileMenuOpen" position="left" class="mobile-drawer"
-      :pt="{ root: { style: 'width: 200px' } }">
+    <Drawer v-model:visible="mobileMenuOpen" position="left" class="mobile-drawer" :show-close-icon="false" :pt="{
+      root: { class: 'mobile-drawer-root' },
+      header: { class: 'mobile-drawer-header' },
+      content: { class: 'mobile-drawer-content' },
+    }">
       <template #header>
         <button type="button" class="sidebar-brand-mobile" :title="t('common.home')" @click="goMobile('/home')">
-          <i class="pi pi-shield brand-icon vip-brand-icon" />
+          <i class="pi pi-shield brand-icon vip-brand-icon" aria-hidden="true" />
           <span class="brand-text">{{ t('common.appName') }}</span>
         </button>
       </template>
       <nav class="sidebar-nav drawer-nav">
         <button v-for="item in menuItems" :key="item.to" type="button" class="nav-item"
           :class="{ active: isActive(item.to) }" @click="goMobile(item.to)">
-          <i :class="item.icon" />
-          <span>{{ item.label }}</span>
+          <i :class="item.icon" aria-hidden="true" />
+          <span class="nav-label">{{ item.label }}</span>
         </button>
       </nav>
     </Drawer>
@@ -73,14 +76,14 @@
               <strong>{{ authStore.getUserName }}</strong>
               <small>{{ authStore.user?.role || 'User' }}</small>
             </span>
-            <i class="pi pi-chevron-down ml-2" />
+            <i class="pi pi-chevron-down ml-2 mr-2" />
           </Button>
           <Menu id="profile_menu" ref="profileMenu" :model="profileMenuItems" popup />
         </div>
       </header>
 
       <Dialog v-model:visible="changePasswordVisible" modal :header="t('changePassword.title')"
-        :style="{ width: 'min(420px, 92vw)' }" :draggable="false" @hide="resetChangePasswordForm">
+        :style="{ width: 'min(420px, 92vw)' }" :draggable="false" @hide="resetChangePasswordForm" :closable="false">
         <form class="change-password-form" @submit.prevent="submitChangePassword">
           <div class="field">
             <label for="current-password">{{ t('changePassword.current') }}</label>
@@ -100,8 +103,9 @@
         </form>
 
         <template #footer>
-          <Button :label="t('common.cancel')" severity="secondary" text @click="closeChangePasswordDialog" />
-          <Button :label="t('changePassword.submit')" icon="pi pi-check" :loading="changePasswordLoading"
+          <Button :label="t('common.cancel')" severity="secondary" text @click="closeChangePasswordDialog"
+            size="large" />
+          <Button :label="t('changePassword.submit')" icon="pi pi-check" :loading="changePasswordLoading" size="large"
             @click="submitChangePassword" />
         </template>
       </Dialog>
@@ -121,7 +125,7 @@
             <img :src="logoCompany" alt="JIA HSIN" class="footer-logo" />
           </div>
           <div class="footer-right">
-            <span>© 2026 IT Jia Hsin CO., LTD</span>
+            <span>© 2026 By App Team</span>
           </div>
         </footer>
       </main>
@@ -341,8 +345,11 @@ function toggleProfileMenu(event: Event) {
 
     .sidebar-brand {
       justify-content: center;
-      height: 7.5%;
+      height: auto;
+      min-height: 2.75rem;
       gap: 0;
+      padding-left: 0.35rem;
+      padding-right: 0.35rem;
     }
 
     .brand-text,
@@ -366,8 +373,8 @@ function toggleProfileMenu(event: Event) {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  min-height: 2.5rem;
-  height: 7.5%;
+  min-height: 2.75rem;
+  height: auto;
   width: 100%;
   border: none;
   background: transparent;
@@ -375,20 +382,24 @@ function toggleProfileMenu(event: Event) {
   text-align: left;
   font: inherit;
   color: inherit;
-  padding: 10px;
+  padding: 0.65rem 0.5rem;
+  border-radius: 10px;
   transition:
     gap var(--sidebar-duration) var(--sidebar-ease),
     padding var(--sidebar-duration) var(--sidebar-ease),
-    justify-content var(--sidebar-duration) var(--sidebar-ease);
+    justify-content var(--sidebar-duration) var(--sidebar-ease),
+    background 0.15s ease;
 
   .brand-icon {
     font-size: 1.5rem;
     flex-shrink: 0;
+    line-height: 1;
   }
 
   .brand-text {
     font-weight: 700;
     font-size: 1.15rem;
+    line-height: 1.2;
     background: var(--vip-gradient-text);
     -webkit-background-clip: text;
     background-clip: text;
@@ -407,30 +418,42 @@ function toggleProfileMenu(event: Event) {
   }
 }
 
+/* Brand trong drawer — gọn, vừa header mobile */
 .sidebar-brand-mobile {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  width: 100%;
+  gap: 0.55rem;
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  padding: 0.15rem 0.25rem 0.15rem 0;
   border: none;
   background: transparent;
   cursor: pointer;
   text-align: left;
   font: inherit;
   color: inherit;
+  border-radius: 8px;
 
   .brand-icon {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    line-height: 1;
   }
 
   .brand-text {
     font-weight: 700;
-    font-size: 1.15rem;
+    font-size: 1rem;
+    line-height: 1.2;
     background: var(--vip-gradient-text);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
   }
 }
 
@@ -555,7 +578,6 @@ function toggleProfileMenu(event: Event) {
 
 .locale-select {
   min-width: 6.5rem;
-  height: 2.25rem;
 }
 
 .locale-option {
@@ -608,6 +630,7 @@ function toggleProfileMenu(event: Event) {
   border-radius: 999px;
   transition: box-shadow 0.15s ease;
   background: white;
+  padding: 3px;
 
   &:hover {
     box-shadow: var(--vip-shadow-1);
@@ -707,7 +730,7 @@ function toggleProfileMenu(event: Event) {
   }
 
   .topbar {
-    padding: var(--vip-safe-top) 0.75rem .3rem;
+    padding: var(--vip-safe-top) 0.75rem 0.3rem;
   }
 
   .topbar-right {
@@ -727,11 +750,33 @@ function toggleProfileMenu(event: Event) {
 
 .main-layout.tablet {
   .topbar {
-    padding: var(--vip-safe-top) 1rem .3rem;
+    padding: var(--vip-safe-top) 1rem 0.3rem;
   }
 
   .locale-select {
     min-width: 9rem;
+  }
+
+  .sidebar {
+    padding-top: calc(0.45rem + var(--vip-safe-top));
+  }
+
+  .sidebar-brand {
+    min-height: 2.85rem;
+    padding: 0rem 0.8rem 1.4rem 0.8rem;
+
+    .brand-icon {
+      font-size: 1.55rem;
+    }
+
+    .brand-text {
+      font-size: 1.2rem;
+    }
+  }
+
+  .nav-item {
+    padding: 0.8rem 0.85rem;
+    font-size: 0.98rem;
   }
 }
 
@@ -739,21 +784,57 @@ function toggleProfileMenu(event: Event) {
   .locale-select {
     min-width: 10rem;
   }
+
+  .sidebar {
+    padding-top: calc(0.55rem + var(--vip-safe-top));
+  }
+
+  .sidebar-brand {
+    min-height: 3rem;
+    padding: 0.55rem 0.8rem 1.8rem 0.8rem;
+
+    .brand-icon {
+      font-size: 1.7rem;
+    }
+
+    .brand-text {
+      font-size: 1.3rem;
+    }
+  }
+
+  .nav-item {
+    padding: 0.85rem 0.9rem;
+    font-size: 1rem;
+
+    i {
+      font-size: 1.15rem;
+    }
+  }
 }
 
 .drawer-nav {
-  padding-top: 0.5rem;
+  padding-top: 0.35rem;
+  gap: 0.3rem;
+
+  .nav-item {
+    padding: 0.7rem 0.75rem;
+    font-size: 0.9rem;
+    border-radius: 8px;
+
+    i {
+      font-size: 1rem;
+      width: 1.15rem;
+    }
+  }
 }
 
 .change-password-form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
 
   .field {
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
   }
 
   label {
@@ -761,5 +842,27 @@ function toggleProfileMenu(event: Event) {
     font-weight: 500;
     color: var(--vip-text);
   }
+}
+</style>
+
+<!-- Drawer teleports ngoài scoped — style riêng cho mobile brand/header -->
+<style lang="scss">
+.mobile-drawer-root.p-drawer,
+.p-drawer.mobile-drawer-root {
+  width: min(78vw, 11rem) !important;
+  max-width: 11rem;
+}
+
+.mobile-drawer-header.p-drawer-header,
+.p-drawer-header.mobile-drawer-header {
+  display: flex;
+  align-items: center;
+  padding: calc(var(--vip-safe-top)) 0.75rem 0.65rem;
+  min-height: 0;
+}
+
+.mobile-drawer-content.p-drawer-content,
+.p-drawer-content.mobile-drawer-content {
+  padding: 0.35rem 0.65rem calc(0.85rem + var(--vip-safe-bottom));
 }
 </style>

@@ -5,8 +5,6 @@
         <i class="pi pi-shield login-brand-icon vip-brand-icon" />
         <span class="login-title vip-gradient-text">{{ t('login.title') }}</span>
       </div>
-      <p class="login-hint">Mobile · {{ t('login.demoHint') }}</p>
-
       <div class="field">
         <label for="mobile-username">{{ t('common.username') }}</label>
         <InputText id="mobile-username" v-model="username" class="w-full" autocomplete="username" />

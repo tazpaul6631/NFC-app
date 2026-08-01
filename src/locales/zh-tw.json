@@ -6,7 +6,7 @@
     "login": "登入",
     "logout": "登出",
     "save": "儲存",
-    "cancel": "取消",
+    "cancel": "關閉",
     "username": "帳號",
     "password": "密碼",
     "online": "線上",
@@ -18,8 +18,7 @@
   },
   "login": {
     "title": "系統登入",
-    "submit": "登入",
-    "demoHint": "示範: admin / 123456"
+    "submit": "登入"
   },
   "changePassword": {
     "menu": "變更密碼",
@@ -34,5 +33,35 @@
     "successTitle": "密碼已更新",
     "successDetail": "您的密碼已成功變更",
     "failed": "無法變更密碼"
+  },
+  "settings": {
+    "title": "設定",
+    "nfc": {
+      "title": "NFC",
+      "subtitle": "掃描 Mifare / NFC 卡片",
+      "start": "開始 NFC 掃描",
+      "stop": "停止掃描",
+      "openSettings": "開啟 NFC 設定",
+      "scanningToast": "就緒 — 請將卡片靠近裝置",
+      "lastScan": "最近掃描",
+      "code": "卡號",
+      "type": "類型",
+      "uid": "UID",
+      "statusMap": {
+        "ready": "就緒",
+        "scanning": "掃描中…",
+        "disabled": "NFC 關閉",
+        "unsupported": "無 NFC",
+        "web": "僅實體裝置",
+        "unknown": "未知"
+      },
+      "errors": {
+        "NFC_WEB_ONLY": "NFC 僅能在有 NFC 的實體 Android 裝置上使用。",
+        "NFC_UNSUPPORTED": "此裝置沒有 NFC 硬體。",
+        "NFC_DISABLED": "NFC 已關閉，請在系統設定中開啟。",
+        "UID_NOT_4_BYTE": "UID 為 {length} byte — 卡號公式需要 4-byte 卡片。",
+        "GENERIC": "無法開始 NFC 掃描"
+      }
+    }
   }
 }

@@ -1,8 +1,14 @@
 <template>
   <!-- IonApp giữ shell Capacitor; routing dùng vue-router + <router-view> (ưu tiên PrimeVue) -->
-  <ion-app>
+  <ion-app :class="`device-${deviceType}`">
     <router-view />
-    <Toast position="top-right" />
+    <Toast position="top-center" :class="['vip-toast', `vip-toast--${deviceType}`]" :pt="{
+      root: { class: ['vip-toast', `vip-toast--${deviceType}`] },
+      message: { class: 'vip-toast-message' },
+      messageContent: { class: 'vip-toast-message-content' },
+      summary: { class: 'vip-toast-summary' },
+      detail: { class: 'vip-toast-detail' },
+    }" />
     <ConfirmDialog />
   </ion-app>
 </template>
@@ -20,9 +26,11 @@ import { StatusBar, Style } from '@capacitor/status-bar'
 import Toast from 'primevue/toast'
 import ConfirmDialog from 'primevue/confirmdialog'
 import { useAuthStore } from '@/store/auth'
+import { useDevice } from '@/composables/useDevice'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { deviceType } = useDevice()
 
 useBackButton(-1, () => {
   if (window.history.length > 1) {

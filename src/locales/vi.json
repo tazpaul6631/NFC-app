@@ -6,7 +6,7 @@
     "login": "Đăng nhập",
     "logout": "Đăng xuất",
     "save": "Lưu",
-    "cancel": "Hủy",
+    "cancel": "Đóng",
     "username": "Tài khoản",
     "password": "Mật khẩu",
     "online": "Trực tuyến",
@@ -18,8 +18,7 @@
   },
   "login": {
     "title": "Đăng nhập hệ thống",
-    "submit": "Đăng nhập",
-    "demoHint": "Demo: admin / 123456"
+    "submit": "Đăng nhập"
   },
   "changePassword": {
     "menu": "Đổi mật khẩu",
@@ -34,5 +33,35 @@
     "successTitle": "Đổi mật khẩu thành công",
     "successDetail": "Mật khẩu của bạn đã được cập nhật",
     "failed": "Không thể đổi mật khẩu"
+  },
+  "settings": {
+    "title": "Cài đặt",
+    "nfc": {
+      "title": "NFC",
+      "subtitle": "test quét thẻ NFC ",
+      "start": "Bắt đầu quét NFC",
+      "stop": "Dừng quét",
+      "openSettings": "Mở cài đặt NFC",
+      "scanningToast": "Sẵn sàng — đưa thẻ sát máy",
+      "lastScan": "Thẻ vừa quét",
+      "code": "Mã",
+      "type": "Loại thẻ",
+      "uid": "UID",
+      "statusMap": {
+        "ready": "Sẵn sàng",
+        "scanning": "Đang quét…",
+        "disabled": "NFC tắt",
+        "unsupported": "Không có NFC",
+        "web": "Chỉ trên thiết bị",
+        "unknown": "Không rõ"
+      },
+      "errors": {
+        "NFC_WEB_ONLY": "NFC chỉ chạy trên máy Android thật có chip NFC.",
+        "NFC_UNSUPPORTED": "Thiết bị này không có phần cứng NFC.",
+        "NFC_DISABLED": "NFC đang tắt. Hãy bật trong cài đặt hệ thống.",
+        "UID_NOT_4_BYTE": "UID {length} byte — không áp dụng công thức mã (cần thẻ 4 byte).",
+        "GENERIC": "Không thể bắt đầu quét NFC"
+      }
+    }
   }
 }

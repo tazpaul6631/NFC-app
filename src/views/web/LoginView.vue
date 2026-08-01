@@ -8,9 +8,6 @@
           <span class="vip-gradient-text">{{ t('login.title') }}</span>
         </div>
       </template>
-      <template #subtitle>
-        <span class="login-hint">Web · {{ t('login.demoHint') }}</span>
-      </template>
       <template #content>
         <form class="login-form" @submit.prevent="onSubmit">
           <div class="field">
