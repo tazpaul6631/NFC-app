@@ -35,7 +35,7 @@ const { t } = useI18n()
 const router = useRouter()
 
 const actions = [
-  { label: 'Home', icon: 'pi pi-home', onClick: () => router.push('/home') },
+  { label: 'Điểm danh xe', icon: 'pi pi-qrcode', onClick: () => router.push('/checkin') },
   { label: 'Settings', icon: 'pi pi-cog', onClick: () => router.push('/settings') },
 ]
 

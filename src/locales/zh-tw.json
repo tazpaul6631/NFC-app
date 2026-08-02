@@ -63,5 +63,71 @@
         "GENERIC": "無法開始 NFC 掃描"
       }
     }
+  },
+  "checkin": {
+    "header": {
+      "title": "員工接駁車點名"
+    },
+    "tabs": {
+      "scan": "掃描車輛",
+      "nfc": "NFC 點名",
+      "list": "名單"
+    },
+    "scan": {
+      "title": "掃描車上的 QR Code",
+      "subtitle": "將相機對準貼在擋風玻璃上的 QR Code，以辨識車牌與路線。",
+      "hint": "尚未掃描車牌",
+      "doneLabel": "已掃描車牌",
+      "scanButton": "掃描 QR",
+      "confirmButton": "確認車輛並掃描 NFC",
+      "changeVehicle": "重新掃描其他車輛",
+      "driverLabel": "司機",
+      "busLabel": "{seats} 人座巴士",
+      "openSettings": "開啟相機權限",
+      "skipButton": "跳過（尚無 QR Code）",
+      "skippedToast": "已跳過掃描步驟（示範）",
+      "errors": {
+        "CAMERA_PERMISSION_DENIED": "尚未取得相機權限，請授權以掃描 QR Code。",
+        "QR_UNSUPPORTED": "此裝置不支援 QR Code 掃描。",
+        "MODULE_UNAVAILABLE": "無法載入 QR 掃描模組，請確認 Google Play 服務並重試。",
+        "NO_CODE": "無法辨識 QR Code，請再試一次。",
+        "GENERIC": "無法開啟相機掃描"
+      }
+    },
+    "nfc": {
+      "title": "NFC 點名",
+      "subtitle": "請員工將員工卡感應在手機的 NFC 感應區以記錄上車。",
+      "needScan": "請先掃描車輛 QR Code 後再進行點名",
+      "prompt": "請將員工卡感應讀卡機",
+      "allDone": "已完成全部員工點名",
+      "boarded": "已上車",
+      "plateLabel": "車牌號碼",
+      "recent": "已點名",
+      "emptyList": "尚無人點名",
+      "viewList": "查看員工名單"
+    },
+    "list": {
+      "title": "點名名單",
+      "total": "總人數",
+      "boarded": "已上車",
+      "notChecked": "未點名",
+      "searchPlaceholder": "依姓名或員工編號搜尋...",
+      "filters": {
+        "all": "全部",
+        "boarded": "已上車",
+        "notChecked": "未點名"
+      },
+      "checkedTag": "已上車",
+      "notCheckedTag": "未點名",
+      "empty": "找不到符合的員工",
+      "back": "上一步",
+      "complete": "完成本趟",
+      "completedToast": "已完成本趟（示範）"
+    },
+    "loading": {
+      "default": "處理中...",
+      "scan": "正在辨識車輛...",
+      "nfc": "正在記錄..."
+    }
   }
 }

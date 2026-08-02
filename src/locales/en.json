@@ -63,5 +63,71 @@
         "GENERIC": "Unable to start NFC scan"
       }
     }
+  },
+  "checkin": {
+    "header": {
+      "title": "Employee pickup check-in"
+    },
+    "tabs": {
+      "scan": "Scan QR on vehicle",
+      "nfc": "NFC check-in",
+      "list": "List"
+    },
+    "scan": {
+      "title": "Scan the vehicle QR code",
+      "subtitle": "Point the camera at the QR code on the vehicle to detect the plate and route.",
+      "hint": "Vehicle plate not scanned yet",
+      "doneLabel": "Vehicle plate scanned",
+      "scanButton": "Scan QR",
+      "confirmButton": "Confirm vehicle & scan NFC",
+      "changeVehicle": "Scan a different vehicle",
+      "driverLabel": "Driver",
+      "busLabel": "{seats}-seat bus",
+      "openSettings": "Open camera permission",
+      "skipButton": "Skip (no QR code yet)",
+      "skippedToast": "Scan step skipped (demo)",
+      "errors": {
+        "CAMERA_PERMISSION_DENIED": "Camera permission was not granted. Please allow it to scan QR codes.",
+        "QR_UNSUPPORTED": "This device does not support QR scanning.",
+        "MODULE_UNAVAILABLE": "Could not load the QR scanner module. Please check Google Play Services and try again.",
+        "NO_CODE": "Could not read the QR code, please try again.",
+        "GENERIC": "Unable to open the camera to scan"
+      }
+    },
+    "nfc": {
+      "title": "NFC check-in",
+      "subtitle": "Have employees tap their staff card on the NFC section on the phone to record boarding.",
+      "needScan": "Please scan the vehicle QR code before checking in",
+      "prompt": "Tap staff card on the reader",
+      "allDone": "All employees have checked in",
+      "boarded": "boarded",
+      "plateLabel": "Vehicle plate",
+      "recent": "Checked in",
+      "emptyList": "No one has checked in yet",
+      "viewList": "View employee list"
+    },
+    "list": {
+      "title": "Check-in list",
+      "total": "Total",
+      "boarded": "Boarded",
+      "notChecked": "Not checked in",
+      "searchPlaceholder": "Search by name or employee code...",
+      "filters": {
+        "all": "All",
+        "boarded": "Boarded",
+        "notChecked": "Not checked in"
+      },
+      "checkedTag": "Boarded",
+      "notCheckedTag": "Not checked in",
+      "empty": "No matching employees found",
+      "back": "Back",
+      "complete": "Complete trip",
+      "completedToast": "Trip completed (demo)"
+    },
+    "loading": {
+      "default": "Processing...",
+      "scan": "Detecting vehicle...",
+      "nfc": "Recording check-in..."
+    }
   }
 }

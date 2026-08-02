@@ -63,5 +63,71 @@
         "GENERIC": "Không thể bắt đầu quét NFC"
       }
     }
+  },
+  "checkin": {
+    "header": {
+      "title": "Điểm danh xe đưa đón nhân viên"
+    },
+    "tabs": {
+      "scan": "Quét mã QR trên xe",
+      "nfc": "Điểm danh NFC",
+      "list": "Danh sách"
+    },
+    "scan": {
+      "title": "Quét mã QR trên xe",
+      "subtitle": "Đưa camera hướng vào mã QR dán ở trên xe để nhận diện biển số xe.",
+      "hint": "Chưa quét biển số xe",
+      "doneLabel": "Đã quét xong biển số xe",
+      "scanButton": "Quét mã QR",
+      "confirmButton": "Xác nhận xe & quét NFC",
+      "changeVehicle": "Quét lại xe khác",
+      "driverLabel": "Tài xế",
+      "busLabel": "Xe {seats} chỗ",
+      "openSettings": "Mở quyền camera",
+      "skipButton": "Cheat",
+      "skippedToast": "Đã bỏ qua bước quét mã (demo)",
+      "errors": {
+        "CAMERA_PERMISSION_DENIED": "Chưa cấp quyền camera. Vui lòng cấp quyền để quét mã QR.",
+        "QR_UNSUPPORTED": "Thiết bị không hỗ trợ quét mã QR.",
+        "MODULE_UNAVAILABLE": "Không thể tải mô-đun quét mã QR. Vui lòng kiểm tra Google Play Services và thử lại.",
+        "NO_CODE": "Không nhận diện được mã QR, vui lòng thử lại.",
+        "GENERIC": "Không thể mở camera quét mã"
+      }
+    },
+    "nfc": {
+      "title": "Điểm danh NFC",
+      "subtitle": "Cho nhân viên chạm thẻ nhân viên vào phần NFC trên điện thoại để ghi nhận lên xe.",
+      "needScan": "Vui lòng quét mã QR trên xe trước khi điểm danh",
+      "prompt": "Chạm thẻ nhân viên vào đầu đọc",
+      "allDone": "Đã điểm danh đủ toàn bộ nhân viên",
+      "boarded": "đã lên xe",
+      "plateLabel": "Biển số xe",
+      "recent": "Đã điểm danh",
+      "emptyList": "Chưa có ai điểm danh",
+      "viewList": "Xem danh sách nhân viên"
+    },
+    "list": {
+      "title": "Danh sách điểm danh",
+      "total": "Tổng số",
+      "boarded": "Đã lên xe",
+      "notChecked": "Chưa check-in",
+      "searchPlaceholder": "Tìm theo tên hoặc mã nhân viên...",
+      "filters": {
+        "all": "Tất cả",
+        "boarded": "Đã lên xe",
+        "notChecked": "Chưa check-in"
+      },
+      "checkedTag": "Đã lên xe",
+      "notCheckedTag": "Chưa check-in",
+      "empty": "Không tìm thấy nhân viên phù hợp",
+      "back": "Quay lại",
+      "complete": "Hoàn tất chuyến",
+      "completedToast": "Đã hoàn tất chuyến (demo)"
+    },
+    "loading": {
+      "default": "Đang xử lý...",
+      "scan": "Đang nhận diện xe...",
+      "nfc": "Đang ghi nhận..."
+    }
   }
 }

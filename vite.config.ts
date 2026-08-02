@@ -24,6 +24,8 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['@capacitor-community/sqlite'],
   },
+  // .lottie (dotLottie) không nằm trong danh sách asset mặc định của Vite
+  assetsInclude: ['**/*.lottie'],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

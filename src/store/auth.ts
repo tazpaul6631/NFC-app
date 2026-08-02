@@ -41,7 +41,7 @@ export const useAuthStore = defineStore('auth', {
         name: username || 'Admin',
         role: 'Developer',
       }
-      await router.push({ name: 'Home' })
+      await router.push({ name: 'CheckinFlow' })
     },
 
     async changePassword(currentPassword: string, newPassword: string) {
@@ -57,7 +57,7 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
       await Preferences.remove({ key: 'vip_token' })
       await storageService.clear()
-      await router.push({ name: 'Login' })
+      await router.push({ name: 'CheckinFlow' })
     },
   },
 
