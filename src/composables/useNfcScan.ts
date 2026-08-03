@@ -7,11 +7,11 @@ import { bytesToHexUid, uidToCardNumber } from '@/utils/nfcUid'
 /** Android reader flags: NFC-A/B/F/V + barcode + skip NDEF check (UID-first for raw Mifare). */
 export const ANDROID_NFC_ALL_TAGS_FLAGS =
   0x1 | // FLAG_READER_NFC_A
-  0x2 | // FLAG_READER_NFC_B
-  0x4 | // FLAG_READER_NFC_F
-  0x8 | // FLAG_READER_NFC_V
-  0x10 | // FLAG_READER_NFC_BARCODE
-  0x80 // FLAG_READER_SKIP_NDEF_CHECK
+    0x2 | // FLAG_READER_NFC_B
+    0x4 | // FLAG_READER_NFC_F
+    0x8 | // FLAG_READER_NFC_V
+    0x10 | // FLAG_READER_NFC_BARCODE
+    0x80 // FLAG_READER_SKIP_NDEF_CHECK
 
 export type MifareFamily =
   | 'MIFARE Classic'
@@ -26,7 +26,7 @@ export type MifareFamily =
 export interface ScannedNfcCard {
   uid: string
   uidRaw: number[]
-  /** Mã decimal đảo byte (chỉ UID 4-byte), ví dụ 806497285. */
+  /** Mã decimal đảo byte (chỉ UID 4-byte) */
   cardNumber: string | null
   byteLength: number
   family: MifareFamily
@@ -36,6 +36,11 @@ export interface ScannedNfcCard {
   scannedAt: string
   tag: NfcTag
 }
+
+export type NfcCardHandler = (card: ScannedNfcCard) => void | Promise<void>
+export type NfcConnectionLostReason = 'NFC_DISABLED' | 'NFC_UNSUPPORTED' | 'SESSION_ENDED'
+
+const STATUS_POLL_MS = 2500
 
 export function resolveMifareFamily(techTypes: string[] = [], fallbackType?: string | null): MifareFamily {
   const techs = techTypes.map((t) => t.toLowerCase())
@@ -74,7 +79,11 @@ function mapTagEvent(event: NfcEvent): ScannedNfcCard {
   }
 }
 
-export function useNfcScan() {
+export function useNfcScan(options?: {
+  onCard?: NfcCardHandler
+  allowWebMock?: boolean
+  onConnectionLost?: (reason: NfcConnectionLostReason) => void
+}) {
   const isNative = Capacitor.isNativePlatform()
   const isScanning = ref(false)
   const isSupported = ref(false)
@@ -83,10 +92,15 @@ export function useNfcScan() {
   const errorMessage = ref<string | null>(null)
 
   const listeners = ref<PluginListenerHandle[]>([])
+  let statusPollTimer: ReturnType<typeof setInterval> | undefined
+  let handlingLoss = false
 
   const canScan = computed(() => isNative && isSupported.value && nfcStatus.value === 'NFC_OK')
+  const isConnected = computed(
+    () => isScanning.value && (nfcStatus.value === 'NFC_OK' || !isNative),
+  )
   const statusLabel = computed(() => {
-    if (!isNative) return 'web'
+    if (!isNative) return isScanning.value ? 'scanning' : 'web'
     if (!isSupported.value || nfcStatus.value === 'NO_NFC') return 'unsupported'
     if (nfcStatus.value === 'NFC_DISABLED') return 'disabled'
     if (nfcStatus.value === 'NFC_OK') return isScanning.value ? 'scanning' : 'ready'
@@ -120,19 +134,99 @@ export function useNfcScan() {
     }
   }
 
+  function stopStatusPoll() {
+    if (statusPollTimer) {
+      clearInterval(statusPollTimer)
+      statusPollTimer = undefined
+    }
+  }
+
+  function startStatusPoll() {
+    stopStatusPoll()
+    if (!isNative) return
+    statusPollTimer = setInterval(() => {
+      void checkHealthWhileScanning()
+    }, STATUS_POLL_MS)
+  }
+
   async function clearListeners() {
     await Promise.all(listeners.value.map((l) => l.remove().catch(() => undefined)))
     listeners.value = []
+  }
+
+  async function handleConnectionLost(reason: NfcConnectionLostReason) {
+    if (handlingLoss || !isScanning.value) return
+    handlingLoss = true
+    try {
+      if (reason === 'NFC_UNSUPPORTED') {
+        isSupported.value = false
+        nfcStatus.value = 'NO_NFC'
+        errorMessage.value = 'NFC_UNSUPPORTED'
+      } else if (reason === 'NFC_DISABLED') {
+        nfcStatus.value = 'NFC_DISABLED'
+        errorMessage.value = 'NFC_DISABLED'
+      } else {
+        // SESSION_ENDED: session chết, NFC adapter có thể vẫn bật → UI về idle
+        errorMessage.value = 'NFC_DISABLED'
+      }
+
+      await stopScan()
+
+      if (reason === 'SESSION_ENDED') {
+        try {
+          await refreshStatus()
+        } catch {
+          // ignore
+        }
+      }
+
+      options?.onConnectionLost?.(reason)
+    } finally {
+      handlingLoss = false
+    }
+  }
+
+  async function checkHealthWhileScanning() {
+    if (!isScanning.value || !isNative || handlingLoss) return
+
+    try {
+      const support = await CapacitorNfc.isSupported()
+      if (!support.supported) {
+        await handleConnectionLost('NFC_UNSUPPORTED')
+        return
+      }
+
+      const { status } = await CapacitorNfc.getStatus()
+      nfcStatus.value = status
+
+      if (status === 'NFC_DISABLED') {
+        await handleConnectionLost('NFC_DISABLED')
+      } else if (status === 'NO_NFC') {
+        await handleConnectionLost('NFC_UNSUPPORTED')
+      }
+    } catch {
+      await handleConnectionLost('NFC_UNSUPPORTED')
+    }
   }
 
   async function startScan() {
     errorMessage.value = null
     await refreshStatus()
 
+    if (isScanning.value) return
+
+    // Web/dev: chỉ mock khi caller cho phép (vd. màn check-in)
     if (!isNative) {
+      if (options?.allowWebMock) {
+        isSupported.value = true
+        nfcStatus.value = 'NFC_OK'
+        isScanning.value = true
+        return
+      }
       errorMessage.value = 'NFC_WEB_ONLY'
       return
     }
+
     if (!isSupported.value || nfcStatus.value === 'NO_NFC') {
       errorMessage.value = 'NFC_UNSUPPORTED'
       return
@@ -141,7 +235,6 @@ export function useNfcScan() {
       errorMessage.value = 'NFC_DISABLED'
       return
     }
-    if (isScanning.value) return
 
     await clearListeners()
 
@@ -156,9 +249,24 @@ export function useNfcScan() {
       } catch {
         // ignore
       }
+
+      await options?.onCard?.(card)
     })
 
-    listeners.value.push(nfcListener)
+    const stateListener = await CapacitorNfc.addListener('nfcStateChange', (event) => {
+      nfcStatus.value = event.status
+      if (!event.enabled || event.status === 'NFC_DISABLED') {
+        void handleConnectionLost('NFC_DISABLED')
+      } else if (event.status === 'NO_NFC') {
+        void handleConnectionLost('NFC_UNSUPPORTED')
+      }
+    })
+
+    const sessionEndListener = await CapacitorNfc.addListener('nfcSessionEnd', () => {
+      void handleConnectionLost('SESSION_ENDED')
+    })
+
+    listeners.value.push(nfcListener, stateListener, sessionEndListener)
 
     await CapacitorNfc.startScanning({
       invalidateAfterFirstRead: false,
@@ -168,9 +276,11 @@ export function useNfcScan() {
     })
 
     isScanning.value = true
+    startStatusPoll()
   }
 
   async function stopScan() {
+    stopStatusPoll()
     try {
       if (isScanning.value) {
         await CapacitorNfc.stopScanning()
@@ -200,6 +310,7 @@ export function useNfcScan() {
     isNative,
     isScanning,
     isSupported,
+    isConnected,
     nfcStatus,
     canScan,
     statusLabel,

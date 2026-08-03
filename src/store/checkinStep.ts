@@ -1,12 +1,7 @@
 import { defineStore } from 'pinia'
 
-export type CheckinStepValue = '1' | '2' | '3'
+export type CheckinStepValue = '1' | '2'
 
-/**
- * Lưu bước hiện tại của luồng check-in (Stepper) vào store dùng chung,
- * để các phần UI khác (tab bar, đường nối giữa các bước...) đều đọc/đổi
- * từ 1 nguồn duy nhất và luôn đồng bộ với nhau.
- */
 export const useCheckinStepStore = defineStore('checkinStep', {
   state: () => ({
     activeStep: '1' as CheckinStepValue,
@@ -20,7 +15,7 @@ export const useCheckinStepStore = defineStore('checkinStep', {
     setStep(step: CheckinStepValue) {
       this.activeStep = step
     },
-    next(max: CheckinStepValue = '3') {
+    next(max: CheckinStepValue = '2') {
       const n = Math.min(Number(this.activeStep) + 1, Number(max))
       this.activeStep = String(n) as CheckinStepValue
     },

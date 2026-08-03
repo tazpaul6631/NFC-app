@@ -14,22 +14,19 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted } from 'vue'
 import { IonApp, useBackButton } from '@ionic/vue'
 import { useRouter } from 'vue-router'
 import { App as CapApp } from '@capacitor/app'
 import { Capacitor } from '@capacitor/core'
 import { Device } from '@capacitor/device'
-import { Network } from '@capacitor/network'
 import { SplashScreen } from '@capacitor/splash-screen'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import Toast from 'primevue/toast'
 import ConfirmDialog from 'primevue/confirmdialog'
-import { useAuthStore } from '@/store/auth'
 import { useDevice } from '@/composables/useDevice'
 
 const router = useRouter()
-const authStore = useAuthStore()
 const { deviceType } = useDevice()
 
 useBackButton(-1, () => {
@@ -39,8 +36,6 @@ useBackButton(-1, () => {
     CapApp.exitApp()
   }
 })
-
-let networkHandle: { remove: () => Promise<void> } | undefined
 
 onMounted(async () => {
   try {
@@ -61,16 +56,5 @@ onMounted(async () => {
       /* ignore — Android 15+ ignores overlaysWebView; SystemBars CSS insets apply instead */
     }
   }
-
-  networkHandle = await Network.addListener('networkStatusChange', (status) => {
-    authStore.setNetworkStatus(status.connected)
-  })
-
-  const current = await Network.getStatus()
-  authStore.setNetworkStatus(current.connected)
-})
-
-onUnmounted(() => {
-  networkHandle?.remove()
 })
 </script>

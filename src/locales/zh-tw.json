@@ -10,7 +10,8 @@
     "username": "帳號",
     "password": "密碼",
     "online": "線上",
-    "offline": "離線"
+    "offline": "離線",
+    "offlineBanner": "目前為離線模式。系統仍可正常使用，待恢復網路後將自動傳送資料。"
   },
   "home": {
     "title": "首頁",
@@ -70,13 +71,14 @@
     },
     "tabs": {
       "scan": "掃描車輛",
-      "nfc": "NFC 點名",
-      "list": "名單"
+      "nfc": "NFC 點名"
     },
     "scan": {
       "title": "掃描車上的 QR Code",
       "subtitle": "將相機對準貼在擋風玻璃上的 QR Code，以辨識車牌與路線。",
-      "hint": "尚未掃描車牌",
+      "hint": "掃描車輛上的 QR Code",
+      "selectPlateHint": "目前離線 — 請從清單選擇車牌",
+      "selectPlatePlaceholder": "選擇車牌號碼",
       "doneLabel": "已掃描車牌",
       "scanButton": "掃描 QR",
       "confirmButton": "確認車輛並掃描 NFC",
@@ -84,8 +86,6 @@
       "driverLabel": "司機",
       "busLabel": "{seats} 人座巴士",
       "openSettings": "開啟相機權限",
-      "skipButton": "跳過（尚無 QR Code）",
-      "skippedToast": "已跳過掃描步驟（示範）",
       "errors": {
         "CAMERA_PERMISSION_DENIED": "尚未取得相機權限，請授權以掃描 QR Code。",
         "QR_UNSUPPORTED": "此裝置不支援 QR Code 掃描。",
@@ -98,31 +98,52 @@
       "title": "NFC 點名",
       "subtitle": "請員工將員工卡感應在手機的 NFC 感應區以記錄上車。",
       "needScan": "請先掃描車輛 QR Code 後再進行點名",
-      "prompt": "請將員工卡感應讀卡機",
+      "prompt": "請將員工卡感應在手機的 NFC 感應區以記錄上車",
       "allDone": "已完成全部員工點名",
       "boarded": "已上車",
       "plateLabel": "車牌號碼",
       "recent": "已點名",
       "emptyList": "尚無人點名",
-      "viewList": "查看員工名單"
+      "openSettings": "開啟 NFC 設定",
+      "hintConnect": "請點按圓形按鈕以連接 NFC",
+      "hintDisabled": "請點按圓形按鈕以開啟 NFC 在系統設定中",
+      "hintUnsupported": "此裝置不支援 NFC",
+      "toastConnected": "已連接 NFC — 可開始點名",
+      "toastEnableNfc": "請先開啟裝置的 NFC",
+      "toastReconnect": "NFC 連線中斷，請點按按鈕重新連接。",
+      "completeConfirmTitle": "確認完成",
+      "completeConfirmMessage": "確認完成本趟？已點名 {boarded}/{total} 位員工。",
+      "completeConfirmButton": "確認",
+      "completeSuccessToast": "已完成本趟",
+      "status": {
+        "idle": "未連接 NFC",
+        "connecting": "連接中…",
+        "connected": "已連接",
+        "disabled": "NFC 關閉",
+        "unsupported": "不支援",
+        "done": "完成"
+      },
+      "errors": {
+        "NFC_WEB_ONLY": "NFC 僅能在實體裝置上使用。",
+        "NFC_UNSUPPORTED": "此裝置沒有 NFC 硬體。",
+        "NFC_DISABLED": "NFC 已關閉，請在系統設定中開啟。",
+        "GENERIC": "無法連接 NFC"
+      }
+    },
+    "sync": {
+      "title": "離線同步",
+      "open": "離線資料",
+      "subtitle": "有 {count} 筆資料等待同步至伺服器。",
+      "empty": "沒有待同步的離線資料。",
+      "pendingTag": "待同步",
+      "syncButton": "立即同步",
+      "syncing": "同步中...",
+      "successToast": "離線資料已成功同步"
     },
     "list": {
       "title": "點名名單",
-      "total": "總人數",
-      "boarded": "已上車",
-      "notChecked": "未點名",
-      "searchPlaceholder": "依姓名或員工編號搜尋...",
-      "filters": {
-        "all": "全部",
-        "boarded": "已上車",
-        "notChecked": "未點名"
-      },
       "checkedTag": "已上車",
-      "notCheckedTag": "未點名",
-      "empty": "找不到符合的員工",
-      "back": "上一步",
-      "complete": "完成本趟",
-      "completedToast": "已完成本趟（示範）"
+      "complete": "完成本趟"
     },
     "loading": {
       "default": "處理中...",

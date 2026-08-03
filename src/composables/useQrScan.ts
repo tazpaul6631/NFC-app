@@ -15,15 +15,6 @@ export type QrScanErrorCode =
   | 'NO_CODE'
   | 'GENERIC'
 
-/**
- * Quét QR bằng giao diện scan có sẵn của ML Kit (BarcodeScanner.scan),
- * không cần tự dựng camera preview trong WebView.
- *
- * Yêu cầu ở phía native (Android):
- * - `<uses-permission android:name="android.permission.CAMERA" />`
- * - `<meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui"/>`
- *   trong tag `<application>` của AndroidManifest.xml, để Play Services tải sẵn module quét mã.
- */
 export function useQrScan() {
   const isNative = Capacitor.isNativePlatform()
   const isAndroid = Capacitor.getPlatform() === 'android'
@@ -41,7 +32,6 @@ export function useQrScan() {
     return requested === 'granted' || requested === 'limited'
   }
 
-  /** Android dùng module quét mã của Google Play Services, cần tải trước khi dùng lần đầu. */
   async function ensureGoogleModule(): Promise<boolean> {
     if (!isAndroid) return true
 
@@ -78,7 +68,6 @@ export function useQrScan() {
     }
   }
 
-  /** Mở camera quét 1 lần, trả về nội dung mã QR hoặc null nếu thất bại/hủy. */
   async function scanOnce(): Promise<string | null> {
     errorCode.value = null
     lastBarcode.value = null

@@ -10,7 +10,8 @@
     "username": "Tài khoản",
     "password": "Mật khẩu",
     "online": "Trực tuyến",
-    "offline": "Ngoại tuyến"
+    "offline": "Ngoại tuyến",
+    "offlineBanner": "Bạn đang ở chế độ offline. Hệ thống vẫn hoạt động bình thường và sẽ tự gửi dữ liệu khi có mạng trở lại."
   },
   "home": {
     "title": "Trang chủ",
@@ -70,22 +71,21 @@
     },
     "tabs": {
       "scan": "Quét mã QR trên xe",
-      "nfc": "Điểm danh NFC",
-      "list": "Danh sách"
+      "nfc": "Điểm danh NFC"
     },
     "scan": {
       "title": "Quét mã QR trên xe",
       "subtitle": "Đưa camera hướng vào mã QR dán ở trên xe để nhận diện biển số xe.",
-      "hint": "Chưa quét biển số xe",
-      "doneLabel": "Đã quét xong biển số xe",
+      "hint": "Quét mã QR trên xe của bạn",
+      "selectPlateHint": "Bạn đang ở chế độ offline — chọn biển số xe trong danh sách",
+      "selectPlatePlaceholder": "Chọn biển số xe",
+      "doneLabel": "Đã quét biển số xe",
       "scanButton": "Quét mã QR",
       "confirmButton": "Xác nhận xe & quét NFC",
       "changeVehicle": "Quét lại xe khác",
       "driverLabel": "Tài xế",
       "busLabel": "Xe {seats} chỗ",
       "openSettings": "Mở quyền camera",
-      "skipButton": "Cheat",
-      "skippedToast": "Đã bỏ qua bước quét mã (demo)",
       "errors": {
         "CAMERA_PERMISSION_DENIED": "Chưa cấp quyền camera. Vui lòng cấp quyền để quét mã QR.",
         "QR_UNSUPPORTED": "Thiết bị không hỗ trợ quét mã QR.",
@@ -98,31 +98,52 @@
       "title": "Điểm danh NFC",
       "subtitle": "Cho nhân viên chạm thẻ nhân viên vào phần NFC trên điện thoại để ghi nhận lên xe.",
       "needScan": "Vui lòng quét mã QR trên xe trước khi điểm danh",
-      "prompt": "Chạm thẻ nhân viên vào đầu đọc",
+      "prompt": "Chạm thẻ nhân viên vào NFC trên điện thoại",
       "allDone": "Đã điểm danh đủ toàn bộ nhân viên",
       "boarded": "đã lên xe",
       "plateLabel": "Biển số xe",
       "recent": "Đã điểm danh",
       "emptyList": "Chưa có ai điểm danh",
-      "viewList": "Xem danh sách nhân viên"
+      "openSettings": "Mở cài đặt NFC",
+      "hintConnect": "Nhấn nút tròn để kết nối NFC",
+      "hintDisabled": "Nhấn nút tròn để bật NFC trong cài đặt hệ thống",
+      "hintUnsupported": "Thiết bị không hỗ trợ NFC",
+      "toastConnected": "Đã kết nối NFC — sẵn sàng điểm danh",
+      "toastEnableNfc": "Vui lòng bật NFC trên thiết bị",
+      "toastReconnect": "NFC đã mất kết nối. Nhấn nút để kết nối lại.",
+      "completeConfirmTitle": "Xác nhận hoàn tất",
+      "completeConfirmMessage": "Xác nhận hoàn tất chuyến? Đã điểm danh {boarded}/{total} nhân viên.",
+      "completeConfirmButton": "Xác nhận",
+      "completeSuccessToast": "Đã hoàn tất chuyến",
+      "status": {
+        "idle": "NFC chưa kết nối",
+        "connecting": "Đang kết nối…",
+        "connected": "Đã kết nối",
+        "disabled": "NFC chưa mở",
+        "unsupported": "Không hỗ trợ",
+        "done": "Hoàn tất"
+      },
+      "errors": {
+        "NFC_WEB_ONLY": "NFC chỉ chạy trên thiết bị thật.",
+        "NFC_UNSUPPORTED": "Thiết bị không có phần cứng NFC.",
+        "NFC_DISABLED": "NFC đang tắt. Hãy bật trong cài đặt hệ thống.",
+        "GENERIC": "Không thể kết nối NFC"
+      }
+    },
+    "sync": {
+      "title": "Đồng bộ offline",
+      "open": "Dữ liệu offline",
+      "subtitle": "Có {count} bản ghi đang chờ đồng bộ lên server.",
+      "empty": "Không có dữ liệu offline chờ đồng bộ.",
+      "pendingTag": "Chờ sync",
+      "syncButton": "Đồng bộ ngay",
+      "syncing": "Đang đồng bộ...",
+      "successToast": "Đã đồng bộ dữ liệu offline thành công"
     },
     "list": {
       "title": "Danh sách điểm danh",
-      "total": "Tổng số",
-      "boarded": "Đã lên xe",
-      "notChecked": "Chưa check-in",
-      "searchPlaceholder": "Tìm theo tên hoặc mã nhân viên...",
-      "filters": {
-        "all": "Tất cả",
-        "boarded": "Đã lên xe",
-        "notChecked": "Chưa check-in"
-      },
       "checkedTag": "Đã lên xe",
-      "notCheckedTag": "Chưa check-in",
-      "empty": "Không tìm thấy nhân viên phù hợp",
-      "back": "Quay lại",
-      "complete": "Hoàn tất chuyến",
-      "completedToast": "Đã hoàn tất chuyến (demo)"
+      "complete": "Hoàn tất chuyến"
     },
     "loading": {
       "default": "Đang xử lý...",

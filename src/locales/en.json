@@ -10,7 +10,8 @@
     "username": "Username",
     "password": "Password",
     "online": "Online",
-    "offline": "Offline"
+    "offline": "Offline",
+    "offlineBanner": "You are offline. The app still works normally and will sync data automatically when the network is back."
   },
   "home": {
     "title": "Home",
@@ -70,13 +71,14 @@
     },
     "tabs": {
       "scan": "Scan QR on vehicle",
-      "nfc": "NFC check-in",
-      "list": "List"
+      "nfc": "NFC check-in"
     },
     "scan": {
       "title": "Scan the vehicle QR code",
       "subtitle": "Point the camera at the QR code on the vehicle to detect the plate and route.",
-      "hint": "Vehicle plate not scanned yet",
+      "hint": "Scan the QR code on the vehicle",
+      "selectPlateHint": "You are offline — select a vehicle plate from the list",
+      "selectPlatePlaceholder": "Select vehicle plate",
       "doneLabel": "Vehicle plate scanned",
       "scanButton": "Scan QR",
       "confirmButton": "Confirm vehicle & scan NFC",
@@ -84,8 +86,6 @@
       "driverLabel": "Driver",
       "busLabel": "{seats}-seat bus",
       "openSettings": "Open camera permission",
-      "skipButton": "Skip (no QR code yet)",
-      "skippedToast": "Scan step skipped (demo)",
       "errors": {
         "CAMERA_PERMISSION_DENIED": "Camera permission was not granted. Please allow it to scan QR codes.",
         "QR_UNSUPPORTED": "This device does not support QR scanning.",
@@ -98,31 +98,52 @@
       "title": "NFC check-in",
       "subtitle": "Have employees tap their staff card on the NFC section on the phone to record boarding.",
       "needScan": "Please scan the vehicle QR code before checking in",
-      "prompt": "Tap staff card on the reader",
+      "prompt": "Tap staff card on the phone",
       "allDone": "All employees have checked in",
       "boarded": "boarded",
       "plateLabel": "Vehicle plate",
       "recent": "Checked in",
       "emptyList": "No one has checked in yet",
-      "viewList": "View employee list"
+      "openSettings": "Open NFC settings",
+      "hintConnect": "Tap the round button to connect NFC",
+      "hintDisabled": "Tap the round button to enable NFC in system settings",
+      "hintUnsupported": "This device does not support NFC",
+      "toastConnected": "NFC connected — ready to check in",
+      "toastEnableNfc": "Please turn on NFC on the device",
+      "toastReconnect": "NFC connection lost. Tap the button to reconnect.",
+      "completeConfirmTitle": "Confirm completion",
+      "completeConfirmMessage": "Complete this trip? Checked in {boarded}/{total} employees.",
+      "completeConfirmButton": "Confirm",
+      "completeSuccessToast": "Trip completed",
+      "status": {
+        "idle": "NFC not connected",
+        "connecting": "Connecting…",
+        "connected": "Connected",
+        "disabled": "NFC off",
+        "unsupported": "Unsupported",
+        "done": "Done"
+      },
+      "errors": {
+        "NFC_WEB_ONLY": "NFC only works on a real device.",
+        "NFC_UNSUPPORTED": "This device has no NFC hardware.",
+        "NFC_DISABLED": "NFC is turned off. Enable it in system settings.",
+        "GENERIC": "Unable to connect NFC"
+      }
+    },
+    "sync": {
+      "title": "Offline sync",
+      "open": "Offline data",
+      "subtitle": "{count} record(s) waiting to sync to the server.",
+      "empty": "No offline data waiting to sync.",
+      "pendingTag": "Pending",
+      "syncButton": "Sync now",
+      "syncing": "Syncing...",
+      "successToast": "Offline data synced successfully"
     },
     "list": {
       "title": "Check-in list",
-      "total": "Total",
-      "boarded": "Boarded",
-      "notChecked": "Not checked in",
-      "searchPlaceholder": "Search by name or employee code...",
-      "filters": {
-        "all": "All",
-        "boarded": "Boarded",
-        "notChecked": "Not checked in"
-      },
       "checkedTag": "Boarded",
-      "notCheckedTag": "Not checked in",
-      "empty": "No matching employees found",
-      "back": "Back",
-      "complete": "Complete trip",
-      "completedToast": "Trip completed (demo)"
+      "complete": "Complete trip"
     },
     "loading": {
       "default": "Processing...",

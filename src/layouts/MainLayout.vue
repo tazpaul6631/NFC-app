@@ -7,11 +7,13 @@
         </div>
 
         <div class="topbar-right">
-          <Tag :severity="authStore.isOnline ? 'success' : 'danger'" class="network-tag"
-            :aria-label="authStore.isOnline ? t('common.online') : t('common.offline')">
-            <span class="network-status">
+          <Tag :severity="isOnline ? 'success' : 'danger'" class="network-tag"
+            :class="{ 'network-tag--offline': !isOnline }"
+            :aria-label="isOnline ? t('common.online') : t('common.offline')"
+            :title="isOnline ? t('common.online') : t('common.offline')">
+            <span class="network-status" :class="{ offline: !isOnline }">
               <i class="pi pi-wifi" />
-              <span v-if="!authStore.isOnline" class="network-offline-mark">!</span>
+              <span v-if="!isOnline" class="network-offline-mark">!</span>
             </span>
           </Tag>
 
@@ -36,6 +38,11 @@
 
     <main class="content">
       <div class="content-inner">
+        <div v-if="!isOnline" class="offline-banner" role="status" aria-live="polite">
+          <i class="pi pi-exclamation-triangle" />
+          <p>{{ t('common.offlineBanner') }}</p>
+        </div>
+
         <div class="content-body">
           <router-view v-slot="{ Component, route: currentRoute }">
             <transition name="fade" mode="out-in">
@@ -59,7 +66,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { useAuthStore } from '@/store/auth'
+import { useNetworkStatus } from '@/composables/useNetworkStatus'
 import AppLogo from '@/components/AppLogo.vue'
 import flagVi from '@/assets/images/flag-vi.png'
 import flagEn from '@/assets/images/flag-en.png'
@@ -73,7 +80,7 @@ const localeOptions = [
 ]
 
 const { t, locale } = useI18n()
-const authStore = useAuthStore()
+const { isOnline } = useNetworkStatus()
 
 function getLocaleOption(value: string) {
   return localeOptions.find((option) => option.value === value) || null
@@ -165,16 +172,25 @@ function applyLocale() {
 
 .network-tag {
   padding-inline: 0.55rem;
+  cursor: default;
+
+  &--offline {
+    animation: network-blink 1.4s ease-in-out infinite;
+  }
 }
 
 .network-status {
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.15rem;
   line-height: 1;
 
   .pi-wifi {
     font-size: 0.95rem;
+  }
+
+  &.offline .pi-wifi {
+    opacity: 0.85;
   }
 }
 
@@ -182,6 +198,18 @@ function applyLocale() {
   font-weight: 700;
   font-size: 0.95rem;
   line-height: 1;
+}
+
+@keyframes network-blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.55;
+  }
 }
 
 .content {
@@ -200,8 +228,35 @@ function applyLocale() {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  padding: 1rem 0.9rem 0;
+  padding: 0.5rem 0.9rem 0;
   box-sizing: border-box;
+}
+
+.offline-banner {
+  display: flex;
+  align-items: self-start;
+  gap: 0.55rem;
+  flex-shrink: 0;
+  margin-bottom: 0.3rem;
+  padding: 0.5rem;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #b91c1c;
+  box-shadow: var(--vip-shadow-1);
+
+  i {
+    margin-top: 0.1rem;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    font-weight: 500;
+  }
 }
 
 .content-body {
@@ -222,7 +277,6 @@ function applyLocale() {
   justify-content: space-between;
   flex-shrink: 0;
   border-top: 1px solid var(--vip-border);
-  margin-top: 0.75rem;
   padding: 0.75rem 0;
   padding-bottom: calc(0.75rem + var(--vip-safe-bottom));
   box-sizing: border-box;

@@ -69,7 +69,7 @@
   --vip-shadow-5: 0 12px 28px rgba(15, 23, 42, 0.12), 0 24px 56px rgba(15, 23, 42, 0.1);
   --vip-shadow-sidebar: 4px 0 24px rgba(15, 23, 42, 0.08);
   --vip-shadow-topbar: 0 2px 16px rgba(15, 23, 42, 0.07);
-  --vip-shadow-primary: 0 4px 14px rgba(37, 99, 235, 0.28);
+  --vip-shadow-primary: 0 5px 5px rgba(37, 99, 235, 0.28);
   --vip-shadow-primary-hover: 0 6px 18px rgba(37, 99, 235, 0.34);
   --vip-focus-ring: 0 0 0 2px rgba(37, 99, 235, 0.14);
 
