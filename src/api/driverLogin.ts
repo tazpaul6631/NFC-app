@@ -9,6 +9,7 @@ export interface DriverLoginData {
 export interface DriverLoginResponse {
     success: boolean
     message: string
+    status?: string
     data: DriverLoginData
 }
 
@@ -19,6 +20,7 @@ export interface DriverPlateItem {
 export interface DriverPlateListResponse {
     success: boolean
     message: string
+    status?: string
     data: DriverPlateItem[]
 }
 

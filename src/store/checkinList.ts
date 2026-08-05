@@ -101,9 +101,6 @@ export const useCheckinListStore = defineStore('checkinList', {
     tripStartedAt: null as string | null,
     /** Modal nhắc gửi offline (global) */
     reminderModalVisible: false,
-    /** Key lần kick/reminder đã xử lý (tránh lặp trong cùng phút) */
-    lastKickKey: null as string | null,
-    lastReminderKey: null as string | null,
   }),
 
   getters: {
@@ -237,13 +234,7 @@ export const useCheckinListStore = defineStore('checkinList', {
 
   persist: {
     key: 'vip_checkin_list',
-    pick: [
-      'employees',
-      'offlineQueue',
-      'tripStartedAt',
-      'lastKickKey',
-      'lastReminderKey',
-    ],
+    pick: ['employees', 'offlineQueue', 'tripStartedAt'],
   },
 })
 

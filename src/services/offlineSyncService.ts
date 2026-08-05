@@ -3,6 +3,7 @@ import { toLocalCheckInTime, useCheckinListStore } from '@/store/checkinList'
 import { useAuthStore } from '@/store/auth'
 import { showAppToast } from '@/services/toastBridge'
 import i18n from '@/i18n'
+import { resolveApiError, resolveApiMessage } from '@/utils/apiMessage'
 
 let syncing = false
 
@@ -38,7 +39,7 @@ export async function syncOfflineQueue(options?: { silent?: boolean }): Promise<
         showAppToast({
           severity: 'warn',
           summary: String(t('checkin.sync.title')),
-          detail: body?.message || String(t('checkin.sync.failed')),
+          detail: resolveApiMessage(body, 'checkin.sync.failed'),
           life: 3200,
         })
       }
@@ -53,12 +54,12 @@ export async function syncOfflineQueue(options?: { silent?: boolean }): Promise<
       life: 2200,
     })
     return true
-  } catch {
+  } catch (err) {
     if (!options?.silent) {
       showAppToast({
         severity: 'error',
         summary: String(t('checkin.sync.title')),
-        detail: String(t('checkin.sync.failed')),
+        detail: resolveApiError(err, 'checkin.sync.failed'),
         life: 3200,
       })
     }

@@ -51,9 +51,9 @@ api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
     }
   }
 
-  // if (token && config.headers) {
-  //   config.headers.Authorization = `Bearer ${token}`
-  // }
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
 
   return config
 })

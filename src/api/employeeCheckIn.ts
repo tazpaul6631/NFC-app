@@ -36,6 +36,7 @@ export interface EmployeeCheckInResult {
 export interface EmployeeCheckInResponse {
     success: boolean
     message: string
+    status?: string
     data: EmployeeCheckInResult
 }
 
@@ -46,6 +47,7 @@ export interface EmployeeCheckInResponse {
 export interface EmployeeCheckInSyncResponse {
     success: boolean
     message: string
+    status?: string
     data?: EmployeeCheckInResult[] | null
 }
 

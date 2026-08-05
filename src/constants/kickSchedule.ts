@@ -32,13 +32,3 @@ export function getVNMinutesNow(date = new Date()): number {
   const utcMinutes = date.getUTCHours() * 60 + date.getUTCMinutes()
   return (utcMinutes + 7 * 60) % (24 * 60)
 }
-
-export function formatKickKey(date = new Date()): string {
-  const vnOffsetMs = 7 * 60 * 60 * 1000
-  const vn = new Date(date.getTime() + vnOffsetMs)
-  const y = vn.getUTCFullYear()
-  const m = String(vn.getUTCMonth() + 1).padStart(2, '0')
-  const d = String(vn.getUTCDate()).padStart(2, '0')
-  const minutes = getVNMinutesNow(date)
-  return `${y}-${m}-${d}:${minutes}`
-}

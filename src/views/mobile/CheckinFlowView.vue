@@ -24,6 +24,18 @@
                         t('checkin.scan.hintOnline') : t('checkin.scan.hintOffline')
                     }}</strong>
                   </div>
+                  <div v-if="offlinePendingCount > 0" class="nfc-action-btns">
+                    <span class="chip-btn-wrap">
+                      <Button class="nfc-list-btn" severity="warn" outlined size="large"
+                        :aria-label="t('checkin.sync.open')" :title="t('checkin.sync.open')"
+                        @click="syncModalVisible = true">
+                        <template #icon>
+                          <i class="pi pi-cloud-upload" style="font-size: 1.5rem;" />
+                        </template>
+                      </Button>
+                      <span class="chip-note warn">{{ offlinePendingCount }}</span>
+                    </span>
+                  </div>
                 </div>
 
                 <Select v-if="offlineVehicleOptions" v-model="selectedPlate" :options="offlineVehicleOptions"
@@ -167,6 +179,8 @@ import { useAuthStore } from '@/store/auth'
 import { toLocalCheckInTime, useCheckinListStore } from '@/store/checkinList'
 import driverLoginApi from '@/api/driverLogin'
 import employeeCheckInApi from '@/api/employeeCheckIn'
+import { speakText } from '@/services/ttsService'
+import { resolveApiError, resolveApiMessage } from '@/utils/apiMessage'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -244,15 +258,15 @@ async function fetchAndCacheNumberPlates() {
     toast.add({
       severity: 'warn',
       summary: t('checkin.scan.title'),
-      detail: body?.message || t('checkin.scan.plateListEmpty'),
+      detail: resolveApiMessage(body, 'checkin.scan.plateListEmpty'),
       life: 4000,
     })
     return false
-  } catch {
+  } catch (err) {
     toast.add({
       severity: 'error',
       summary: t('checkin.scan.title'),
-      detail: t('checkin.scan.plateListFailed'),
+      detail: resolveApiError(err, 'checkin.scan.plateListFailed'),
       life: 4000,
     })
     return false
@@ -280,7 +294,7 @@ async function loginWithNumberPlate(numberPlate: string) {
       toast.add({
         severity: 'warn',
         summary: t('checkin.scan.title'),
-        detail: body?.message || t('checkin.scan.loginFailed'),
+        detail: resolveApiMessage(body, 'checkin.scan.loginFailed'),
         life: 3200,
       })
       return false
@@ -298,11 +312,11 @@ async function loginWithNumberPlate(numberPlate: string) {
 
     proceedToNfcStep()
     return true
-  } catch {
+  } catch (err) {
     toast.add({
       severity: 'error',
       summary: t('checkin.scan.title'),
-      detail: t('checkin.scan.loginFailed'),
+      detail: resolveApiError(err, 'checkin.scan.loginFailed'),
       life: 5000,
     })
     return false
@@ -433,6 +447,7 @@ async function checkInByEmployeeId(employeeId: string) {
       true,
       numberPlate,
     )
+    void speakText('Xin cảm ơn')
     toast.add({
       severity: 'success',
       summary: t('checkin.nfc.barcode'),
@@ -450,16 +465,18 @@ async function checkInByEmployeeId(employeeId: string) {
     })
 
     if (!body?.success || !body.data) {
+      void speakText('Xin thử lại')
       toast.add({
         severity: 'warn',
         summary: t('checkin.nfc.barcode'),
-        detail: body?.message || t('checkin.nfc.checkInFailed'),
+        detail: resolveApiMessage(body, 'checkin.nfc.checkInFailed'),
         life: 3500,
       })
       return false
     }
 
     checkinListStore.addEmployee(body.data, false, numberPlate)
+    void speakText('Xin cảm ơn')
     toast.add({
       severity: 'success',
       summary: t('checkin.nfc.barcode'),
@@ -468,13 +485,11 @@ async function checkInByEmployeeId(employeeId: string) {
     })
     return true
   } catch (err) {
-    const detail =
-      (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-      t('checkin.nfc.checkInFailed')
+    void speakText('Xin thử lại')
     toast.add({
       severity: 'error',
       summary: t('checkin.nfc.barcode'),
-      detail,
+      detail: resolveApiError(err, 'checkin.nfc.checkInFailed'),
       life: 3500,
     })
     return false
@@ -508,6 +523,7 @@ async function checkInByCardNumber(cardNumber: string) {
       true,
       numberPlate,
     )
+    void speakText('Xin cảm ơn')
     toast.add({
       severity: 'success',
       summary: t('checkin.nfc.title'),
@@ -525,16 +541,18 @@ async function checkInByCardNumber(cardNumber: string) {
     })
 
     if (!body?.success || !body.data) {
+      void speakText('Xin thử lại')
       toast.add({
         severity: 'warn',
         summary: t('checkin.nfc.title'),
-        detail: body?.message || t('checkin.nfc.checkInFailed'),
+        detail: resolveApiMessage(body, 'checkin.nfc.checkInFailed'),
         life: 3500,
       })
       return false
     }
 
     checkinListStore.addEmployee(body.data, false, numberPlate)
+    void speakText('Xin cảm ơn')
     toast.add({
       severity: 'success',
       summary: t('checkin.nfc.title'),
@@ -543,13 +561,11 @@ async function checkInByCardNumber(cardNumber: string) {
     })
     return true
   } catch (err) {
-    const detail =
-      (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-      t('checkin.nfc.checkInFailed')
+    void speakText('Xin thử lại')
     toast.add({
       severity: 'error',
       summary: t('checkin.nfc.title'),
-      detail,
+      detail: resolveApiError(err, 'checkin.nfc.checkInFailed'),
       life: 3500,
     })
     return false

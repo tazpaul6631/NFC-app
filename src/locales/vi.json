@@ -180,6 +180,6 @@
     "CREATE_SUCCESS": "Tạo thành công",
     "CARD_NOT_FOUND": "Không tìm thấy thẻ nhân viên",
     "EMPLOYEE_NOT_FOUND": "Không tìm thấy nhân viên",
-    "CHECK_IN_NOT_AVAILABLE": "Điểm danh không khả dụng"
+    "CHECK_IN_NOT_AVAILABLE": "Bạn không phải làm ca hiện tại"
   }
 }
