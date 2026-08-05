@@ -1,5 +1,5 @@
-const urlLocal = 'http://10.0.111.127:7152';
-const urlServer = 'https://report.jiahsin.com.vn/MixGlueApi/';
+const urlLocal = 'http://10.0.111.118:7253';
+const urlServer = 'https://ap02.jiahsin.com.vn/api';
 const urlLocalWifi = 'http://10.0.149.107:7152';
 
 export default {

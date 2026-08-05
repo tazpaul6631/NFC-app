@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
   appId: 'com.jiahsin.vip',
-  appName: 'VIP',
+  appName: 'Bus Check-in',
   webDir: 'dist',
   plugins: {
     CapacitorHttp: {

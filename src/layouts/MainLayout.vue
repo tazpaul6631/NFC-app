@@ -171,7 +171,7 @@ function applyLocale() {
 }
 
 .network-tag {
-  padding-inline: 0.55rem;
+  padding: 0.4rem;
   cursor: default;
 
   &--offline {
@@ -186,7 +186,7 @@ function applyLocale() {
   line-height: 1;
 
   .pi-wifi {
-    font-size: 0.95rem;
+    font-size: 1.5rem;
   }
 
   &.offline .pi-wifi {
@@ -240,9 +240,9 @@ function applyLocale() {
   margin-bottom: 0.3rem;
   padding: 0.5rem;
   border-radius: 10px;
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.45);
-  color: #b91c1c;
+  background: rgba(239, 213, 68, 0.12);
+  border: 1px solid rgba(239, 171, 68, 0.45);
+  color: #b9871c;
   box-shadow: var(--vip-shadow-1);
 
   i {
@@ -253,7 +253,7 @@ function applyLocale() {
 
   p {
     margin: 0;
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     line-height: 1.4;
     font-weight: 500;
   }

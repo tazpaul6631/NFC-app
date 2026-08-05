@@ -21,5 +21,7 @@ withDefaults(
 .app-logo {
   display: block;
   flex-shrink: 0;
+  object-fit: contain;
+  border-radius: 50%;
 }
 </style>

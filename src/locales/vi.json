@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "VIP",
+    "warning": "Cảnh báo",
     "welcome": "Chào mừng",
     "home": "Trang chủ",
     "login": "Đăng nhập",
@@ -11,7 +12,10 @@
     "password": "Mật khẩu",
     "online": "Trực tuyến",
     "offline": "Ngoại tuyến",
-    "offlineBanner": "Bạn đang ở chế độ offline. Hệ thống vẫn hoạt động bình thường và sẽ tự gửi dữ liệu khi có mạng trở lại."
+    "offlineBanner": "Bạn đang ở chế độ offline. Hệ thống vẫn hoạt động bình thường và sẽ tự gửi dữ liệu khi có mạng trở lại.",
+    "sessionExpired": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+    "serverMaintenance": "Server đang bảo trì hoặc lỗi. Hệ thống chuyển offline và sẽ đồng bộ khi server ổn định.",
+    "search": "Tìm kiếm..."
   },
   "home": {
     "title": "Trang chủ",
@@ -74,10 +78,11 @@
       "nfc": "Điểm danh NFC"
     },
     "scan": {
-      "title": "Quét mã QR trên xe",
-      "subtitle": "Đưa camera hướng vào mã QR dán ở trên xe để nhận diện biển số xe.",
-      "hint": "Quét mã QR trên xe của bạn",
-      "selectPlateHint": "Bạn đang ở chế độ offline — chọn biển số xe trong danh sách",
+      "title": "Điểm danh xe đưa đón nhân viên",
+      "hintOnline": "Quét mã QR trên xe của bạn",
+      "hintOffline": "Chọn biển số xe của bạn",
+      "hintSelectOnline": "Nếu không có biển số xe, vui lòng quét mã QR trên xe của bạn",
+      "hintSelectOffline": "Nếu không có biển số xe, vui lòng kiểm tra lại mạng và thử lại",
       "selectPlatePlaceholder": "Chọn biển số xe",
       "doneLabel": "Đã quét biển số xe",
       "scanButton": "Quét mã QR",
@@ -86,6 +91,9 @@
       "driverLabel": "Tài xế",
       "busLabel": "Xe {seats} chỗ",
       "openSettings": "Mở quyền camera",
+      "loginFailed": "Biển số xe không đúng. Vui lòng quét lại mã QR.",
+      "plateListEmpty": "Không có danh sách biển số. Vui lòng thử lại.",
+      "plateListFailed": "Không tải được danh sách biển số. Vui lòng thử lại.",
       "errors": {
         "CAMERA_PERMISSION_DENIED": "Chưa cấp quyền camera. Vui lòng cấp quyền để quét mã QR.",
         "QR_UNSUPPORTED": "Thiết bị không hỗ trợ quét mã QR.",
@@ -98,19 +106,24 @@
       "title": "Điểm danh NFC",
       "subtitle": "Cho nhân viên chạm thẻ nhân viên vào phần NFC trên điện thoại để ghi nhận lên xe.",
       "needScan": "Vui lòng quét mã QR trên xe trước khi điểm danh",
-      "prompt": "Chạm thẻ nhân viên vào NFC trên điện thoại",
       "allDone": "Đã điểm danh đủ toàn bộ nhân viên",
       "boarded": "đã lên xe",
       "plateLabel": "Biển số xe",
       "recent": "Đã điểm danh",
       "emptyList": "Chưa có ai điểm danh",
+      "emptyListHint": "Chạm thẻ NFC hoặc quét barcode để thêm vào danh sách",
+      "filterEmpty": "Không tìm thấy nhân viên phù hợp",
+      "checkInFailed": "Điểm danh thất bại. Vui lòng thử lại.",
+      "alreadyCheckedIn": "Nhân viên này đã điểm danh rồi",
       "openSettings": "Mở cài đặt NFC",
-      "hintConnect": "Nhấn nút tròn để kết nối NFC",
-      "hintDisabled": "Nhấn nút tròn để bật NFC trong cài đặt hệ thống",
+      "hintConnect": "Nhấn nút để kết nối NFC",
+      "hintDisabled": "Nhấn nút để bật NFC trong cài đặt hệ thống",
       "hintUnsupported": "Thiết bị không hỗ trợ NFC",
+      "barcode": "Quét mã vạch",
       "toastConnected": "Đã kết nối NFC — sẵn sàng điểm danh",
       "toastEnableNfc": "Vui lòng bật NFC trên thiết bị",
       "toastReconnect": "NFC đã mất kết nối. Nhấn nút để kết nối lại.",
+      "completeTrip": "Hoàn tất chuyến",
       "completeConfirmTitle": "Xác nhận hoàn tất",
       "completeConfirmMessage": "Xác nhận hoàn tất chuyến? Đã điểm danh {boarded}/{total} nhân viên.",
       "completeConfirmButton": "Xác nhận",
@@ -138,7 +151,15 @@
       "pendingTag": "Chờ sync",
       "syncButton": "Đồng bộ ngay",
       "syncing": "Đang đồng bộ...",
-      "successToast": "Đã đồng bộ dữ liệu offline thành công"
+      "successToast": "Đã đồng bộ dữ liệu offline thành công",
+      "failed": "Đồng bộ thất bại. Vui lòng thử lại."
+    },
+    "kick": {
+      "reminderTitle": "Nhắc nhở gửi dữ liệu",
+      "reminderBody": "Vui lòng gửi dữ liệu offline trước giờ checkin.",
+      "reminderModalText": "Còn {count} mục chưa gửi. Vui lòng đồng bộ trước giờ checkin.",
+      "kickTitle": "Đã đến giờ checkin",
+      "kickBody": "Danh sách hiển thị đã được làm mới."
     },
     "list": {
       "title": "Danh sách điểm danh",
@@ -150,5 +171,15 @@
       "scan": "Đang nhận diện xe...",
       "nfc": "Đang ghi nhận..."
     }
+  },
+  "error": {
+    "LOGIN_SUCCESS": "Đăng nhập thành công",
+    "VEHICLE_NOT_FOUND": "Không tìm thấy biển số xe",
+    "GET_DATA_SUCCESS": "Lấy dữ liệu thành công",
+    "INVALID_ACCESS_TOKEN": "Mã truy cập không hợp lệ",
+    "CREATE_SUCCESS": "Tạo thành công",
+    "CARD_NOT_FOUND": "Không tìm thấy thẻ nhân viên",
+    "EMPLOYEE_NOT_FOUND": "Không tìm thấy nhân viên",
+    "CHECK_IN_NOT_AVAILABLE": "Điểm danh không khả dụng"
   }
 }

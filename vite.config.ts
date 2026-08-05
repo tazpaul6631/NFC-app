@@ -45,7 +45,14 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('@ionic')) return 'vendor-ionic'
+            // Ionic + Vue cùng chunk — tránh TDZ "Cannot access before initialization"
+            if (
+              id.includes('@ionic') ||
+              id.includes('vue') ||
+              id.includes('pinia') ||
+              id.includes('vue-router')
+            )
+              return 'vendor-vue-core'
             if (
               id.includes('primevue') ||
               id.includes('primeicons') ||
@@ -54,8 +61,6 @@ export default defineConfig({
               id.includes('@noble')
             )
               return 'vendor-primevue'
-            if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router'))
-              return 'vendor-vue-core'
             if (id.includes('@capacitor')) return 'vendor-capacitor'
             return 'vendor-others'
           }

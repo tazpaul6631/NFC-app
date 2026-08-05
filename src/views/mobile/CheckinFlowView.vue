@@ -4,18 +4,6 @@
       <div class="ck-header-text">
         <strong>{{ t('checkin.header.title') }}</strong>
       </div>
-
-      <div class="ck-step-indicator">
-        <template v-for="(step, idx) in stepIndicatorList" :key="step.value">
-          <div class="ck-step-item" :class="step.status">
-            <span class="ck-step-dot" :class="step.status">
-              <i :class="step.icon" />
-            </span>
-            <span class="ck-step-label">{{ t(step.labelKey) }}</span>
-          </div>
-          <span v-if="idx < stepIndicatorList.length - 1" class="ck-step-line" :class="step.status" />
-        </template>
-      </div>
     </div>
 
     <Stepper v-model:value="activeStep" class="ck-stepper">
@@ -25,54 +13,39 @@
         <StepPanels>
           <StepPanel value="1">
             <div class="ck-panel scan-step">
-              <h2>{{ t('checkin.scan.title') }}</h2>
-              <p class="ck-subtitle">{{ t('checkin.scan.subtitle') }}</p>
-
-              <div class="scan-card" :class="{ done: vehicleConfirmed }">
+              <div class="scan-card">
                 <div class="scan-icon-container">
                   <div class="scan-icon">
-                    <i
-                      :class="vehicleConfirmed ? 'pi pi-check-circle' : authStore.isOnline ? 'pi pi-qrcode' : 'pi pi-list'" />
+                    <i class="pi pi-qrcode" style="font-size: 1.2rem;" />
                   </div>
                   <div class="scan-info">
                     <strong>{{
-                      vehicleConfirmed
-                        ? t('checkin.scan.doneLabel')
-                        : authStore.isOnline
-                          ? t('checkin.scan.hint')
-                          : t('checkin.scan.selectPlateHint')
+                      authStore.isOnline ?
+                        t('checkin.scan.hintOnline') : t('checkin.scan.hintOffline')
                     }}</strong>
                   </div>
                 </div>
 
-                <Select v-if="!vehicleConfirmed && !authStore.isOnline" v-model="selectedPlate"
-                  :options="offlineVehicleOptions" option-label="label" option-value="value"
-                  :placeholder="t('checkin.scan.selectPlatePlaceholder')" class="w-full offline-plate-select"
-                  size="large" @update:model-value="onOfflinePlateSelect" filter />
-
-                <Button v-if="!vehicleConfirmed && authStore.isOnline" :label="t('checkin.scan.scanButton')"
-                  icon="pi pi-qrcode" size="large" :loading="scanning" @click="handleScanClick" />
+                <Select v-if="offlineVehicleOptions" v-model="selectedPlate" :options="offlineVehicleOptions"
+                  option-label="label" option-value="value" :placeholder="t('checkin.scan.selectPlatePlaceholder')"
+                  class="offline-plate-select" size="large" :disabled="scanning"
+                  @update:model-value="onOfflinePlateSelect" filter />
+                <small v-if="offlineVehicleOptions" class="scan-hint-text"><strong><span class="text-danger">*</span>
+                    {{
+                      authStore.isOnline ?
+                        t('checkin.scan.hintSelectOnline') : t('checkin.scan.hintSelectOffline')
+                    }}</strong></small>
+                <Button v-if="authStore.isOnline" :label="t('checkin.scan.scanButton')" size="large" :loading="scanning"
+                  @click="handleScanClick" class="scan-button">
+                  <template #icon><i class="pi pi-qrcode" style="font-size: 2rem;" /></template>
+                </Button>
               </div>
-
-              <div v-if="!vehicleConfirmed && authStore.isOnline" class="scan-secondary-actions">
-                <Button v-if="qrErrorCode === 'CAMERA_PERMISSION_DENIED'" :label="t('checkin.scan.openSettings')"
-                  icon="pi pi-cog" text size="large" @click="openCameraSettings" />
-              </div>
-
-              <Transition name="fade">
-                <div v-if="vehicleConfirmed" class="vehicle-card">
-                  <span class="plate-tag">{{ vehicle.plate }}</span>
-                </div>
-              </Transition>
-
-              <Button v-if="vehicleConfirmed" :label="t('checkin.scan.confirmButton')" icon="pi pi-arrow-right"
-                icon-pos="right" class="w-full" size="large" @click="goNext" />
             </div>
           </StepPanel>
 
           <StepPanel value="2">
             <div class="ck-panel nfc-step">
-              <div class="nfc-connect-card" :class="nfcUiState">
+              <div class="nfc-connect-card">
                 <div class="nfc-plate-side">
                   <div class="nfc-plate-row">
                     <div class="nfc-plate-text">
@@ -81,9 +54,13 @@
                     </div>
                     <div class="nfc-action-btns">
                       <span class="chip-btn-wrap">
-                        <Button class="nfc-list-btn" icon="pi pi-cloud-upload" severity="warn" outlined size="large"
+                        <Button class="nfc-list-btn" severity="warn" outlined size="large"
                           :aria-label="t('checkin.sync.open')" :title="t('checkin.sync.open')"
-                          @click="syncModalVisible = true" />
+                          @click="syncModalVisible = true">
+                          <template #icon>
+                            <i class="pi pi-cloud-upload" style="font-size: 1.5rem;" />
+                          </template>
+                        </Button>
                         <span v-if="offlinePendingCount > 0" class="chip-note warn">{{ offlinePendingCount }}</span>
                       </span>
                     </div>
@@ -91,15 +68,20 @@
                 </div>
 
                 <div class="nfc-status-side">
-                  <button type="button" class="nfc-pad" :class="nfcUiState" :disabled="allCheckedIn || nfcConnecting"
-                    :aria-label="nfcStatusText" @click="onNfcPadClick">
-                    <span v-if="nfcConnected" class="nfc-ring r1" />
-                    <span v-if="nfcConnected" class="nfc-ring r2" />
-                    <i :class="nfcPadIcon" />
-                  </button>
-                  <div class="nfc-status-meta">
+                  <div class="scan-action-cluster">
                     <Tag :value="nfcStatusText" :severity="nfcStatusSeverity" class="nfc-status-tag" />
-                    <small class="nfc-hint">{{ nfcHintText }}</small>
+                    <button type="button" class="nfc-pad" :class="nfcUiState" :disabled="nfcConnecting"
+                      :aria-label="nfcStatusText" @click="onNfcPadClick">
+                      <i :class="nfcPadIcon" />
+                    </button>
+                  </div>
+
+                  <div class="scan-action-cluster">
+                    <Tag :value="t('checkin.nfc.barcode')" severity="success" class="nfc-status-tag" />
+                    <button type="button" class="nfc-pad barcode-pad" :class="{ scanning: barcodeScanning }"
+                      :disabled="barcodeScanning" :aria-label="t('checkin.nfc.barcode')" @click="onBarcodeScanClick">
+                      <i :class="barcodeScanning ? 'pi pi-spin pi-spinner' : 'pi pi-barcode'" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -107,19 +89,42 @@
               <div class="scanned-list-block">
                 <div class="scanned-list-head">
                   <span class="recent-title">{{ t('checkin.nfc.recent') }}</span>
-                  <strong class="scanned-count">{{ checkedInCount }}/{{ employees.length }}</strong>
+                  <strong v-show="checkedInCount > 0" class="scanned-count">({{ checkedInCount }})</strong>
                 </div>
 
+                <InputText v-if="scannedEmployees.length" v-model="filterEmployee" type="search"
+                  class="scanned-list-filter" :placeholder="t('common.search')" />
+
                 <div class="scanned-list">
-                  <TransitionGroup name="recent-row">
-                    <div v-for="emp in scannedEmployees" :key="emp.id" class="recent-row">
-                      <Avatar :label="emp.initials" shape="circle" :style="{ backgroundColor: emp.color }" />
-                      <span class="recent-name">{{ emp.name }}</span>
-                      <span class="recent-time">{{ emp.checkinTime }}</span>
+                  <TransitionGroup v-if="filteredScannedEmployees.length" name="recent-row">
+                    <div v-for="emp in filteredScannedEmployees" :key="emp.id" class="recent-row checked">
+                      <div class="recent-avatar-wrap">
+                        <Avatar :label="emp.initials" shape="circle"
+                          :style="{ backgroundColor: emp.color, color: 'white', fontWeight: 'bold', boxShadow: `var(--vip-shadow-primary)` }" />
+                        <i v-if="emp.pendingSync" class="pi pi-cloud-upload pending-cloud"
+                          :title="t('checkin.sync.pendingTag')" :aria-label="t('checkin.sync.pendingTag')" />
+                      </div>
+                      <div class="recent-info">
+                        <div class="recent-name-row">
+                          <strong class="recent-name">{{ emp.name ? emp.name : '...' }}</strong>
+                          <span class="recent-time">{{ emp.checkinTime }}</span>
+                        </div>
+                        <small class="recent-code">Id: {{ emp.code ? emp.code : '...' }}</small>
+                        <small class="recent-card-number">Card: {{ emp.cardNumber ? emp.cardNumber : '...' }}</small>
+                      </div>
                     </div>
                   </TransitionGroup>
 
-                  <p v-if="!scannedEmployees.length" class="empty-hint">{{ t('checkin.nfc.emptyList') }}</p>
+                  <div v-else-if="scannedEmployees.length" class="scanned-empty">
+                    <i class="pi pi-search" />
+                    <strong>{{ t('checkin.nfc.filterEmpty') }}</strong>
+                  </div>
+
+                  <div v-else class="scanned-empty">
+                    <i class="pi pi-users" />
+                    <strong>{{ t('checkin.nfc.emptyList') }}</strong>
+                    <p>{{ t('checkin.nfc.emptyListHint') }}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -131,7 +136,7 @@
     <Dialog v-model:visible="completeConfirmVisible" modal :header="t('checkin.nfc.completeConfirmTitle')"
       :style="{ width: 'min(400px, 94vw)' }" :draggable="false" :closable="false">
       <p class="sync-subtitle">
-        {{ t('checkin.nfc.completeConfirmMessage', { boarded: checkedInCount, total: employees.length }) }}
+        {{ t('checkin.nfc.completeConfirmMessage', { boarded: checkedInCount, total: checkedInCount }) }}
       </p>
       <template #footer>
         <Button :label="t('common.cancel')" severity="secondary" @click="completeConfirmVisible = false" size="large" />
@@ -140,74 +145,58 @@
       </template>
     </Dialog>
 
-    <Dialog v-model:visible="syncModalVisible" modal :header="t('checkin.sync.title')"
-      :style="{ width: 'min(440px, 94vw)' }" :draggable="false" :closable="false">
-      <div class="list-modal-body">
-        <p class="sync-subtitle">
-          {{
-            offlinePendingCount
-              ? t('checkin.sync.subtitle', { count: offlinePendingCount })
-              : t('checkin.sync.empty')
-          }}
-        </p>
-
-        <div class="employee-list modal-employee-list">
-          <div v-for="emp in offlinePendingEmployees" :key="emp.id" class="employee-row checked">
-            <Avatar :label="emp.initials" shape="circle" :style="{ backgroundColor: emp.color }" />
-            <div class="employee-info">
-              <strong>{{ emp.name }}</strong>
-              <small>{{ emp.code }} · {{ emp.checkinTime }}</small>
-            </div>
-            <div class="employee-status">
-              <span class="status-badge pending">{{ t('checkin.sync.pendingTag') }}</span>
-            </div>
-          </div>
-
-          <p v-if="!offlinePendingEmployees.length" class="empty-hint">{{ t('checkin.sync.empty') }}</p>
-        </div>
-      </div>
-
-      <template #footer>
-        <Button :label="t('common.cancel')" severity="secondary" @click="syncModalVisible = false" size="large" />
-        <Button :label="t('checkin.sync.syncButton')" icon="pi pi-sync" :loading="syncing"
-          :disabled="!offlinePendingCount" @click="syncOfflineData" size="large" />
-      </template>
-    </Dialog>
+    <OfflineSyncModal v-model="syncModalVisible" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
-import dayjs from 'dayjs'
 import Stepper from 'primevue/stepper'
 import StepPanels from 'primevue/steppanels'
 import StepPanel from 'primevue/steppanel'
 import Dialog from 'primevue/dialog'
 import LottieLoader from '@/components/LottieLoader.vue'
+import OfflineSyncModal from '@/components/OfflineSyncModal.vue'
 import { useQrScan } from '@/composables/useQrScan'
 import { useNfcScan } from '@/composables/useNfcScan'
 import { useCheckinStepStore } from '@/store/checkinStep'
 import { useAuthStore } from '@/store/auth'
-
-interface Employee {
-  id: number
-  name: string
-  code: string
-  dept: string
-  checkedIn: boolean
-  checkinTime: string | null
-  initials: string
-  color: string
-  /** Chưa đồng bộ lên server (offline queue) */
-  pendingSync: boolean
-}
+import { toLocalCheckInTime, useCheckinListStore } from '@/store/checkinList'
+import driverLoginApi from '@/api/driverLogin'
+import employeeCheckInApi from '@/api/employeeCheckIn'
 
 const { t } = useI18n()
 const toast = useToast()
 const authStore = useAuthStore()
+const checkinListStore = useCheckinListStore()
+const { scannedEmployees, checkedInCount, offlinePendingCount } = storeToRefs(checkinListStore)
+
+const filterEmployee = ref('')
+
+function matchesEmployeeFilter(
+  emp: { name: string; code: string; cardNumber: string },
+  query: string,
+) {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  return [emp.name, emp.code, emp.cardNumber].some((v) =>
+    String(v || '')
+      .toLowerCase()
+      .includes(q),
+  )
+}
+
+/** List điểm danh ca hiện tại — filter theo name / code / cardNumber */
+const filteredScannedEmployees = computed(() =>
+  scannedEmployees.value.filter((emp) => matchesEmployeeFilter(emp, filterEmployee.value)),
+)
+
+onMounted(() => {
+  void authStore.hydrateCachedNumberPlates()
+})
 
 const checkinStepStore = useCheckinStepStore()
 const { activeStep } = storeToRefs(checkinStepStore)
@@ -215,262 +204,363 @@ const completedSteps = reactive(new Set<'1' | '2'>())
 const transitioning = ref(false)
 const loadingMessage = ref('')
 const syncModalVisible = ref(false)
-const syncing = ref(false)
 const completeConfirmVisible = ref(false)
 
-function flashLoader(message: string, ms = 650) {
+function showLoader(message: string) {
   loadingMessage.value = message
   transitioning.value = true
-  setTimeout(() => {
-    transitioning.value = false
-  }, ms)
 }
 
-function goNext() {
-  completedSteps.add(activeStep.value)
-  checkinStepStore.next('2')
-  flashLoader(t('checkin.loading.default'))
+function hideLoader() {
+  transitioning.value = false
 }
 
 /* ---------- Step 1: scan ---------- */
 const scanning = ref(false)
-const vehicleConfirmed = ref(false)
 const tripCompleted = ref(false)
 const selectedPlate = ref<string | null>(null)
 
-/** Demo danh sách biển số cache offline — sau thay bằng data local */
-const offlineVehicleOptions = [
-  { label: '51B-223.45', value: '51B-223.45' },
-  { label: '51B-118.90', value: '51B-118.90' },
-  { label: '51B-334.12', value: '51B-334.12' },
-]
+const offlineVehicleOptions = computed(() => authStore.offlineVehicleOptions)
 
 const vehicle = reactive({
-  plate: '',
-  routeCode: 'Tuyến 04',
-  from: 'Long An',
-  to: 'KCN',
-  driver: 'Nguyễn Văn Sáng',
-  capacity: 29,
-  departure: '06:42',
-  eta: '07:15',
+  plate: authStore.numberPlate || ''
 })
 
-function onOfflinePlateSelect(plate: string | null) {
-  if (!plate || vehicleConfirmed.value) return
-  vehicle.plate = plate
-  vehicleConfirmed.value = true
-  flashLoader(t('checkin.loading.scan'), 400)
+function proceedToNfcStep() {
+  completedSteps.add('1')
+  checkinListStore.startTrip()
+  checkinStepStore.setStep('2')
 }
 
-function simulateScan() {
-  if (vehicleConfirmed.value || scanning.value) return
-  scanning.value = true
-  flashLoader(t('checkin.loading.scan'), 1100)
-  setTimeout(() => {
-    scanning.value = false
-    vehicle.plate = vehicle.plate || '51B-223.45'
-    vehicleConfirmed.value = true
-  }, 1100)
+async function fetchAndCacheNumberPlates() {
+  showLoader(t('checkin.loading.default'))
+  try {
+    const { data: body } = await driverLoginApi.getVehicles()
+    if (body?.success && Array.isArray(body.data) && body.data.length > 0) {
+      await authStore.setCachedNumberPlates(body.data.map((item) => item.numberPlate))
+      return true
+    }
+
+    toast.add({
+      severity: 'warn',
+      summary: t('checkin.scan.title'),
+      detail: body?.message || t('checkin.scan.plateListEmpty'),
+      life: 4000,
+    })
+    return false
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('checkin.scan.title'),
+      detail: t('checkin.scan.plateListFailed'),
+      life: 4000,
+    })
+    return false
+  } finally {
+    hideLoader()
+  }
+}
+
+async function loginWithNumberPlate(numberPlate: string) {
+  const plate = numberPlate.trim()
+  if (!plate) {
+    toast.add({
+      severity: 'warn',
+      summary: t('checkin.scan.title'),
+      detail: t('checkin.scan.errors.NO_CODE'),
+      life: 5000,
+    })
+    return false
+  }
+
+  try {
+    const { data: body } = await driverLoginApi.postDriverLogin({ numberPlate: plate })
+    console.log('body', body)
+    if (!body?.success || !body.data?.accessToken) {
+      toast.add({
+        severity: 'warn',
+        summary: t('checkin.scan.title'),
+        detail: body?.message || t('checkin.scan.loginFailed'),
+        life: 3200,
+      })
+      return false
+    }
+
+    authStore.setDriverSession({
+      numberPlate: body.data.numberPlate || plate,
+      accessToken: body.data.accessToken,
+      expiresAt: body.data.expiresAt,
+    })
+    vehicle.plate = body.data.numberPlate || plate
+
+    const hasPlates = await fetchAndCacheNumberPlates()
+    if (!hasPlates) return false
+
+    proceedToNfcStep()
+    return true
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('checkin.scan.title'),
+      detail: t('checkin.scan.loginFailed'),
+      life: 5000,
+    })
+    return false
+  }
+}
+
+function onOfflinePlateSelect(plate: string | null) {
+  if (!plate || scanning.value) return
+  vehicle.plate = plate
+  authStore.numberPlate = plate
+  proceedToNfcStep()
 }
 
 const {
   isNative: isNativeScan,
   scanOnce,
   errorCode: qrErrorCode,
-  openSettings: openCameraSettings,
+  BarcodeFormat,
 } = useQrScan()
 
-// function resolveQrErrorMessage(code: string) {
-//   const key = `checkin.scan.errors.${code}`
-//   const translated = t(key)
-//   return translated === key ? t('checkin.scan.errors.GENERIC') : translated
-// }
+const barcodeScanning = ref(false)
+
+const barcodeFormats = [
+  BarcodeFormat.Code128,
+  BarcodeFormat.Code39,
+  BarcodeFormat.Code93,
+  BarcodeFormat.Ean13,
+  BarcodeFormat.Ean8,
+  BarcodeFormat.QrCode,
+]
 
 async function handleScanClick() {
-  if (vehicleConfirmed.value || scanning.value) return
+  if (scanning.value) return
 
   if (!isNativeScan) {
-    simulateScan()
+    toast.add({
+      severity: 'warn',
+      summary: t('checkin.scan.title'),
+      detail: t('checkin.scan.errors.QR_UNSUPPORTED'),
+      life: 3200,
+    })
     return
   }
 
   scanning.value = true
-  flashLoader(t('checkin.loading.scan'))
+  showLoader(t('checkin.loading.scan'))
   try {
-    const value = await scanOnce()
-    if (value) {
-      vehicle.plate = value
-      vehicleConfirmed.value = true
+    const plate = await scanOnce([BarcodeFormat.QrCode])
+    if (!plate) {
+      hideLoader()
+      return
     }
-    // else if (qrErrorCode.value) {
-    //   toast.add({
-    //     severity: 'warn',
-    //     summary: t('checkin.scan.title'),
-    //     detail: resolveQrErrorMessage(qrErrorCode.value),
-    //     life: 3200,
-    //   })
-    // }
+    const ok = await loginWithNumberPlate(plate)
+    if (!ok) hideLoader()
   } finally {
     scanning.value = false
   }
 }
 
-/* ---------- Step 2: NFC ---------- */
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/)
-  return parts
-    .slice(-2)
-    .map((p) => p.charAt(0).toUpperCase())
-    .join('')
-}
+async function onBarcodeScanClick() {
+  if (barcodeScanning.value) return
 
-const avatarColors = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#0ea5e9', '#ec4899', '#14b8a6']
+  if (!isNativeScan) {
+    toast.add({
+      severity: 'warn',
+      summary: t('checkin.nfc.barcode'),
+      detail: t('checkin.scan.errors.QR_UNSUPPORTED'),
+      life: 3200,
+    })
+    return
+  }
 
-function makeEmployee(
-  id: number,
-  name: string,
-  code: string,
-  dept: string,
-  checkedIn: boolean,
-  checkinTime: string | null,
-  pendingSync = false,
-): Employee {
-  return {
-    id,
-    name,
-    code,
-    dept,
-    checkedIn,
-    checkinTime,
-    initials: getInitials(name),
-    color: avatarColors[id % avatarColors.length],
-    pendingSync,
+  barcodeScanning.value = true
+  try {
+    const code = await scanOnce(barcodeFormats)
+    if (!code) {
+      const key = qrErrorCode.value ? `checkin.scan.errors.${qrErrorCode.value}` : 'checkin.scan.errors.NO_CODE'
+      const detail = t(key) === key ? t('checkin.scan.errors.GENERIC') : t(key)
+      toast.add({
+        severity: 'warn',
+        summary: t('checkin.nfc.barcode'),
+        detail,
+        life: 3200,
+      })
+      return
+    }
+    await checkInByEmployeeId(code)
+  } finally {
+    barcodeScanning.value = false
   }
 }
 
-const employees = reactive<Employee[]>([
-  makeEmployee(1, 'Nguyễn Văn Hùng', 'NV0231', 'Xưởng lắp ráp 1', true, '09:59:54', true),
-  makeEmployee(2, 'Trần Thị Mai', 'NV0198', 'Kiểm định chất lượng', true, '09:59:56', true),
-  makeEmployee(3, 'Lê Hoàng Phúc', 'NV0312', 'Xưởng lắp ráp 2', true, '09:59:57', false),
-  makeEmployee(4, 'Phạm Thị Ngọc Anh', 'NV0087', 'Kho vận', true, '09:59:59', false),
-  makeEmployee(5, 'Đỗ Minh Tuấn', 'NV0155', 'Bảo trì thiết bị', true, '10:00:01', false),
-  makeEmployee(6, 'Vũ Thị Ánh', 'NV0259', 'Bảo trì thiết bị', true, '10:00:02', false),
-  makeEmployee(7, 'Bùi Văn Long', 'NV0221', 'Kho vận', false, null),
-  makeEmployee(8, 'Hoàng Thị Lan', 'NV0203', 'Kiểm định chất lượng', false, null),
-  makeEmployee(9, 'Ngô Đức Thắng', 'NV0176', 'Xưởng lắp ráp 1', false, null),
-  makeEmployee(10, 'Trịnh Thị Kim Oanh', 'NV0142', 'Nhân sự', false, null),
-  makeEmployee(11, 'Nguyễn Văn Hùng', 'NV0231', 'Xưởng lắp ráp 1', true, '09:59:54', true),
-  makeEmployee(12, 'Trần Thị Mai', 'NV0198', 'Kiểm định chất lượng', true, '09:59:56', true),
-  makeEmployee(13, 'Nguyễn Văn Hùng', 'NV0231', 'Xưởng lắp ráp 1', true, '09:59:54', true),
-  makeEmployee(14, 'Trần Thị Mai', 'NV0198', 'Kiểm định chất lượng', true, '09:59:56', true),
-  makeEmployee(15, 'Nguyễn Văn Hùng', 'NV0231', 'Xưởng lắp ráp 1', true, '09:59:54', true),
-  makeEmployee(16, 'Trần Thị Mai', 'NV0198', 'Kiểm định chất lượng', true, '09:59:56', true),
-  makeEmployee(17, 'Nguyễn Văn Hùng', 'NV0231', 'Xưởng lắp ráp 1', true, '09:59:54', true),
-  makeEmployee(18, 'Trần Thị Mai', 'NV0198', 'Kiểm định chất lượng', true, '09:59:56', true),
-  makeEmployee(19, 'Nguyễn Văn Hùng', 'NV0231', 'Xưởng lắp ráp 1', true, '09:59:54', true),
-  makeEmployee(20, 'Trần Thị Mai', 'NV0198', 'Kiểm định chất lượng', true, '09:59:56', true),
-  makeEmployee(21, 'Nguyễn Văn Hùng', 'NV0231', 'Xưởng lắp ráp 1', true, '09:59:54', true),
-  makeEmployee(22, 'Trần Thị Mai', 'NV0198', 'Kiểm định chất lượng', true, '09:59:56', true),
-  makeEmployee(23, 'Nguyễn Văn Hùng', 'NV0231', 'Xưởng lắp ráp 1', true, '09:59:54', true),
-  makeEmployee(24, 'Trần Thị Mai', 'NV0198', 'Kiểm định chất lượng', true, '09:59:56', true),
-  makeEmployee(25, 'Nguyễn Văn Hùng', 'NV0231', 'Xưởng lắp ráp 1', true, '09:59:54', true),
-  makeEmployee(26, 'Trần Thị Mai', 'NV0198', 'Kiểm định chất lượng', true, '09:59:56', true),
-  makeEmployee(27, 'Nguyễn Văn Hùng', 'NV0231', 'Xưởng lắp ráp 1', true, '09:59:54', true),
-  makeEmployee(28, 'Trần Thị Mai', 'NV0198', 'Kiểm định chất lượng', true, '09:59:56', true),
-])
-
-const checkedInCount = computed(() => employees.filter((e) => e.checkedIn).length)
-const allCheckedIn = computed(() => checkedInCount.value === employees.length)
-const offlinePendingEmployees = computed(() =>
-  employees
-    .filter((e) => e.checkedIn && e.pendingSync)
-    .sort((a, b) => (b.checkinTime! > a.checkinTime! ? 1 : -1)),
-)
-const offlinePendingCount = computed(() => offlinePendingEmployees.value.length)
-
-function isStepDone(value: '1' | '2') {
-  return completedSteps.has(value)
+/* ---------- Step 2: NFC / barcode check-in list ---------- */
+function currentNumberPlate() {
+  return (vehicle.plate || authStore.numberPlate || '').trim()
 }
 
-const STEP_ICONS: Record<'1' | '2', string> = {
-  '1': 'pi pi-qrcode',
-  '2': 'pi pi-wifi',
-}
+async function checkInByEmployeeId(employeeId: string) {
+  const numberPlate = currentNumberPlate()
+  if (!numberPlate) {
+    toast.add({
+      severity: 'warn',
+      summary: t('checkin.nfc.barcode'),
+      detail: t('checkin.nfc.needScan'),
+      life: 3200,
+    })
+    return false
+  }
 
-const STEP_LABEL_KEYS: Record<'1' | '2', string> = {
-  '1': 'checkin.tabs.scan',
-  '2': 'checkin.tabs.nfc',
-}
+  if (checkinListStore.isAlreadyCheckedIn(employeeId)) {
+    toast.add({
+      severity: 'warn',
+      summary: t('checkin.nfc.barcode'),
+      detail: t('checkin.nfc.alreadyCheckedIn'),
+      life: 2800,
+    })
+    return false
+  }
 
-const stepIndicatorList = computed(() =>
-  (['1', '2'] as const).map((value) => {
-    const done = isStepDone(value)
-    const status: 'pending' | 'current' | 'success' = done
-      ? 'success'
-      : activeStep.value === value
-        ? 'current'
-        : 'pending'
-    return {
-      value,
-      status,
-      labelKey: STEP_LABEL_KEYS[value],
-      icon: STEP_ICONS[value],
+  if (!authStore.isOnline) {
+    checkinListStore.addEmployee(
+      {
+        employeeId,
+        employeeName: employeeId,
+        cardNumber: '',
+        checkInTime: toLocalCheckInTime(),
+      },
+      true,
+      numberPlate,
+    )
+    toast.add({
+      severity: 'success',
+      summary: t('checkin.nfc.barcode'),
+      detail: `${employeeId} — ${t('checkin.sync.pendingTag')}`,
+      life: 2200,
+    })
+    return true
+  }
+
+  showLoader(t('checkin.loading.nfc'))
+  try {
+    const { data: body } = await employeeCheckInApi.createCheckInByEmployeeId({
+      numberPlate,
+      employeeId,
+    })
+
+    if (!body?.success || !body.data) {
+      toast.add({
+        severity: 'warn',
+        summary: t('checkin.nfc.barcode'),
+        detail: body?.message || t('checkin.nfc.checkInFailed'),
+        life: 3500,
+      })
+      return false
     }
-  }),
-)
 
-/** Toàn bộ nhân viên đã điểm danh (mới nhất trước), hiển thị trong list scroll riêng của step 2. */
-const scannedEmployees = computed(() =>
-  employees
-    .filter((e) => e.checkedIn && e.checkinTime)
-    .sort((a, b) => (b.checkinTime! > a.checkinTime! ? 1 : -1)),
-)
+    checkinListStore.addEmployee(body.data, false, numberPlate)
+    toast.add({
+      severity: 'success',
+      summary: t('checkin.nfc.barcode'),
+      detail: `${body.data.employeeName} — ${t('checkin.list.checkedTag')}`,
+      life: 2200,
+    })
+    return true
+  } catch (err) {
+    const detail =
+      (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+      t('checkin.nfc.checkInFailed')
+    toast.add({
+      severity: 'error',
+      summary: t('checkin.nfc.barcode'),
+      detail,
+      life: 3500,
+    })
+    return false
+  } finally {
+    hideLoader()
+  }
+}
 
-const nfcConnecting = ref(false)
+async function checkInByCardNumber(cardNumber: string) {
+  const numberPlate = currentNumberPlate()
+  if (!numberPlate || !cardNumber) return false
 
-function recordNfcCheckin(_code?: string | null) {
-  const next = employees.find((e) => !e.checkedIn)
-  if (!next) return
-  flashLoader(t('checkin.loading.nfc'), 350)
-  setTimeout(() => {
-    next.checkedIn = true
-    next.checkinTime = dayjs().format('HH:mm:ss')
-    // Offline hoặc mất mạng → xếp hàng chờ sync
-    next.pendingSync = !authStore.isOnline
+  if (checkinListStore.isAlreadyCheckedIn(cardNumber)) {
+    toast.add({
+      severity: 'warn',
+      summary: t('checkin.nfc.title'),
+      detail: t('checkin.nfc.alreadyCheckedIn'),
+      life: 2800,
+    })
+    return false
+  }
+
+  if (!authStore.isOnline) {
+    checkinListStore.addEmployee(
+      {
+        employeeId: '',
+        employeeName: cardNumber,
+        cardNumber,
+        checkInTime: toLocalCheckInTime(),
+      },
+      true,
+      numberPlate,
+    )
     toast.add({
       severity: 'success',
       summary: t('checkin.nfc.title'),
-      detail: `${next.name} — ${t('checkin.list.checkedTag')}`,
-      life: 1800,
-    })
-  }, 350)
-}
-
-async function syncOfflineData() {
-  if (!offlinePendingCount.value || syncing.value) return
-  syncing.value = true
-  flashLoader(t('checkin.sync.syncing'), 900)
-  try {
-    await new Promise((r) => setTimeout(r, 900))
-    const pending = employees.filter((e) => e.checkedIn && e.pendingSync)
-    pending.forEach((emp) => {
-      emp.pendingSync = false
-    })
-    toast.add({
-      severity: 'success',
-      summary: t('checkin.sync.title'),
-      detail: t('checkin.sync.successToast'),
+      detail: `${cardNumber} — ${t('checkin.sync.pendingTag')}`,
       life: 2200,
     })
-    syncModalVisible.value = false
+    return true
+  }
+
+  showLoader(t('checkin.loading.nfc'))
+  try {
+    const { data: body } = await employeeCheckInApi.createCheckInByCardId({
+      numberPlate,
+      cardNumber,
+    })
+
+    if (!body?.success || !body.data) {
+      toast.add({
+        severity: 'warn',
+        summary: t('checkin.nfc.title'),
+        detail: body?.message || t('checkin.nfc.checkInFailed'),
+        life: 3500,
+      })
+      return false
+    }
+
+    checkinListStore.addEmployee(body.data, false, numberPlate)
+    toast.add({
+      severity: 'success',
+      summary: t('checkin.nfc.title'),
+      detail: `${body.data.employeeName} — ${t('checkin.list.checkedTag')}`,
+      life: 2200,
+    })
+    return true
+  } catch (err) {
+    const detail =
+      (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+      t('checkin.nfc.checkInFailed')
+    toast.add({
+      severity: 'error',
+      summary: t('checkin.nfc.title'),
+      detail,
+      life: 3500,
+    })
+    return false
   } finally {
-    syncing.value = false
+    hideLoader()
   }
 }
 
+const nfcConnecting = ref(false)
+
 const {
-  isNative: isNativeNfc,
   isConnected: nfcConnected,
   nfcStatus,
   statusLabel: nfcStatusLabel,
@@ -480,9 +570,9 @@ const {
   stopScan: stopNfcScan,
   openNfcSettings,
 } = useNfcScan({
-  allowWebMock: true,
   onCard: (card) => {
-    recordNfcCheckin(card.cardNumber ?? card.uid)
+    const cardNumber = card.cardNumber ?? card.uid
+    if (cardNumber) void checkInByCardNumber(cardNumber)
   },
   onConnectionLost: (reason) => {
     const detail =
@@ -499,7 +589,6 @@ const {
 })
 
 const nfcUiState = computed(() => {
-  if (allCheckedIn.value) return 'done'
   if (nfcConnecting.value) return 'connecting'
   if (nfcConnected.value) return 'connected'
   if (nfcStatus.value === 'NFC_DISABLED') return 'disabled'
@@ -513,8 +602,6 @@ const nfcStatusSeverity = computed(() => {
       return 'success'
     case 'connecting':
       return 'info'
-    case 'done':
-      return 'success'
     case 'disabled':
     case 'unsupported':
       return 'warn'
@@ -529,8 +616,6 @@ const nfcStatusText = computed(() => {
       return t('checkin.nfc.status.connected')
     case 'connecting':
       return t('checkin.nfc.status.connecting')
-    case 'done':
-      return t('checkin.nfc.status.done')
     case 'disabled':
       return t('checkin.nfc.status.disabled')
     case 'unsupported':
@@ -541,28 +626,26 @@ const nfcStatusText = computed(() => {
 })
 
 const nfcHintText = computed(() => {
-  if (allCheckedIn.value) return t('checkin.nfc.allDone')
-  if (nfcConnected.value) return t('checkin.nfc.prompt')
   if (nfcStatus.value === 'NFC_DISABLED') return t('checkin.nfc.hintDisabled')
-  if (nfcStatusLabel.value === 'unsupported' && isNativeNfc) return t('checkin.nfc.hintUnsupported')
+  if (nfcStatusLabel.value === 'unsupported') return t('checkin.nfc.hintUnsupported')
   return t('checkin.nfc.hintConnect')
 })
 
 const nfcPadIcon = computed(() => {
   if (nfcConnecting.value) return 'pi pi-spin pi-spinner'
-  if (nfcConnected.value || allCheckedIn.value) return 'pi pi-wifi'
+  if (nfcConnected.value) return 'pi pi-wifi'
   if (nfcStatus.value === 'NFC_DISABLED') return 'pi pi-ban'
   return 'pi pi-link'
 })
 
 async function connectNfc() {
-  if (nfcConnected.value || nfcConnecting.value || allCheckedIn.value) return
+  if (nfcConnected.value || nfcConnecting.value) return
 
   nfcConnecting.value = true
   try {
     await refreshNfcStatus()
 
-    if (isNativeNfc && nfcStatus.value === 'NFC_DISABLED') {
+    if (nfcStatus.value === 'NFC_DISABLED') {
       toast.add({
         severity: 'warn',
         summary: t('checkin.nfc.title'),
@@ -573,7 +656,7 @@ async function connectNfc() {
       return
     }
 
-    if (isNativeNfc && (nfcStatusLabel.value === 'unsupported' || nfcStatus.value === 'NO_NFC')) {
+    if (nfcStatusLabel.value === 'unsupported' || nfcStatus.value === 'NO_NFC') {
       toast.add({
         severity: 'warn',
         summary: t('checkin.nfc.title'),
@@ -615,17 +698,8 @@ async function connectNfc() {
 }
 
 async function onNfcPadClick() {
-  if (allCheckedIn.value) return
-
-  if (!nfcConnected.value) {
-    await connectNfc()
-    return
-  }
-
-  // Đã kết nối: trên web tap để demo; trên máy thật chờ chạm thẻ
-  if (!isNativeNfc) {
-    recordNfcCheckin()
-  }
+  if (nfcConnected.value) return
+  await connectNfc()
 }
 
 watch(activeStep, async (step, prev) => {
@@ -677,135 +751,14 @@ function confirmCompleteTrip() {
   flex-direction: column;
   min-width: 0;
   background: var(--vip-gradient-primary);
-  border-top-left-radius: 14px;
-  border-top-right-radius: 14px;
+  border-radius: 14px;
   padding: 0.85rem 1rem;
   color: #fff;
   box-shadow: var(--vip-shadow-primary);
 
   strong {
-    font-size: 0.98rem;
+    font-size: 1.2rem;
     line-height: 1.25;
-  }
-}
-
-.ck-step-indicator {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
-  background: var(--vip-surface);
-  border-bottom-left-radius: 14px;
-  border-bottom-right-radius: 14px;
-  padding: 0.85rem 1rem;
-  box-shadow: var(--vip-shadow-primary);
-}
-
-.ck-step-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
-  gap: 0.3rem;
-}
-
-.ck-step-label {
-  font-size: 0.68rem;
-  font-weight: 500;
-  line-height: 1.15;
-  text-align: center;
-  color: var(--vip-muted);
-  max-width: 4.4rem;
-  transition: color 0.2s ease;
-
-  &.pending {
-    color: var(--vip-muted);
-  }
-
-  &.current {
-    color: var(--vip-accent-amber);
-    font-weight: 700;
-    animation: ck-blink-warn 3s ease-in-out infinite;
-  }
-
-  &.success {
-    color: var(--vip-accent-green);
-  }
-}
-
-.ck-step-item.current .ck-step-label {
-  color: var(--vip-accent-amber);
-  font-weight: 700;
-  animation: ck-blink-warn 3s ease-in-out infinite;
-}
-
-.ck-step-item.success .ck-step-label {
-  color: var(--vip-accent-green);
-}
-
-.ck-step-dot {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 1.9rem;
-  height: 1.9rem;
-  border-radius: 50%;
-  font-size: 0.85rem;
-  color: #fff;
-  border: 2px solid transparent;
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-  box-shadow: var(--vip-shadow-primary);
-
-  &.pending {
-    background: var(--vip-muted);
-    border-color: var(--vip-muted);
-  }
-
-  &.current {
-    background: var(--vip-accent-amber);
-    border-color: var(--vip-accent-amber);
-    animation: ck-blink-warn 3s ease-in-out infinite;
-  }
-
-  &.success {
-    background: var(--vip-accent-green);
-    border-color: var(--vip-accent-green);
-  }
-}
-
-.ck-step-line {
-  flex: 1 1 0;
-  min-width: 0.5rem;
-  height: 0;
-  margin-top: 1.5rem;
-  border-top: 2px dashed rgba(255, 255, 255, 0.35);
-  transition: border-color 0.2s ease;
-  box-shadow: var(--vip-shadow-primary);
-
-  &.pending {
-    border-color: var(--vip-muted);
-  }
-
-  &.current {
-    border-color: var(--vip-accent-amber);
-    animation: ck-blink-warn 3s ease-in-out infinite;
-  }
-
-  &.success {
-    border-top-style: solid;
-    border-color: var(--vip-accent-green);
-  }
-}
-
-@keyframes ck-blink-warn {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.3;
   }
 }
 
@@ -873,7 +826,7 @@ function confirmCompleteTrip() {
 .scan-card {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.5rem;
   padding: 0.9rem 1rem;
   border-radius: 14px;
   background: var(--vip-surface-soft);
@@ -885,11 +838,21 @@ function confirmCompleteTrip() {
   }
 }
 
+.scan-hint-text {
+  margin-bottom: 0.5rem;
+}
+
+.text-danger {
+  font-size: 0.8rem;
+  color: red;
+}
+
 .scan-icon-container {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.85rem;
+  margin-bottom: 0.5rem;
 }
 
 .scan-icon {
@@ -914,8 +877,8 @@ function confirmCompleteTrip() {
   background: rgba(16, 185, 129, 0.14);
 }
 
-.offline-plate-select {
-  width: 100%;
+.scan-button {
+  font-size: 2rem;
 }
 
 .scan-info {
@@ -926,37 +889,8 @@ function confirmCompleteTrip() {
   gap: 0.15rem;
 
   strong {
-    font-size: 0.9rem;
+    font-size: 1.1rem;
     color: var(--vip-text);
-  }
-}
-
-.scan-web-note {
-  font-size: 0.72rem;
-  color: var(--vip-muted);
-  line-height: 1.3;
-}
-
-.scan-secondary-actions {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: -0.3rem;
-}
-
-.vehicle-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.85rem 1rem;
-  border-radius: 12px;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-
-  .plate-tag {
-    align-self: flex-start;
-    color: var(--vip-accent-green);
   }
 }
 
@@ -1026,7 +960,7 @@ function confirmCompleteTrip() {
   background: rgba(16, 155, 109, 0.1);
   border: 1px solid rgba(22, 170, 121, 0.25);
   box-shadow: var(--vip-shadow-primary);
-  padding: 5px;
+  padding: 5px 10px;
 }
 
 .nfc-plate-label {
@@ -1086,6 +1020,7 @@ function confirmCompleteTrip() {
   color: #fff;
   pointer-events: none;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2);
+  animation: nfc-pulse 2s ease-in-out infinite;
 
   &.warn {
     background: #f59e0b;
@@ -1104,10 +1039,9 @@ function confirmCompleteTrip() {
 }
 
 .nfc-status-side {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.65rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
   width: 100%;
   min-width: 0;
   padding-top: 0.55rem;
@@ -1116,13 +1050,11 @@ function confirmCompleteTrip() {
   z-index: 1;
 }
 
-.nfc-status-meta {
+.scan-action-cluster {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 0.5rem;
-  flex: 1;
+  align-items: center;
+  gap: 0.45rem;
   min-width: 0;
 }
 
@@ -1133,15 +1065,6 @@ function confirmCompleteTrip() {
   box-shadow: var(--vip-shadow-primary);
 }
 
-.nfc-hint {
-  margin: 0;
-  text-align: left;
-  font-size: 0.9rem;
-  color: var(--vip-muted);
-  line-height: 1.35;
-  max-width: none;
-}
-
 .nfc-pad {
   position: relative;
   flex-shrink: 0;
@@ -1150,7 +1073,6 @@ function confirmCompleteTrip() {
   border-radius: 50%;
   border: none;
   cursor: pointer;
-  background: radial-gradient(circle at 50% 50%, #1e293b 0%, #0f172a 70%);
   box-shadow: var(--vip-shadow-primary);
   display: flex;
   align-items: center;
@@ -1185,7 +1107,7 @@ function confirmCompleteTrip() {
   }
 
   &.idle {
-    animation: nfc-pad-breathe 2.2s ease-in-out infinite;
+    animation: nfc-pad-breathe 2s ease-in-out infinite;
   }
 
   &.idle i,
@@ -1195,11 +1117,7 @@ function confirmCompleteTrip() {
   }
 
   &.connecting {
-    animation: nfc-pad-connecting 1.1s ease-in-out infinite;
-  }
-
-  &.connected {
-    animation: nfc-pad-ready 2.4s ease-in-out infinite;
+    animation: nfc-pad-connecting 2s ease-in-out infinite;
   }
 
   &.connected i,
@@ -1208,8 +1126,8 @@ function confirmCompleteTrip() {
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.45);
   }
 
-  &.done {
-    animation: none;
+  &.connected {
+    animation: nfc-pad-ready 2s ease-in-out infinite;
   }
 
   &.disabled i,
@@ -1221,18 +1139,14 @@ function confirmCompleteTrip() {
   &.unsupported {
     animation: nfc-pulse 2s ease-in-out infinite;
   }
-}
 
-.nfc-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 2px solid rgba(16, 185, 129, 0.45);
-  pointer-events: none;
-  animation: nfc-ring-wave 2.4s ease-out infinite;
+  &.barcode-pad i {
+    background: #10b981;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.45);
+  }
 
-  &.r2 {
-    animation-delay: 1.2s;
+  &.barcode-pad {
+    animation: nfc-pad-ready 2s ease-in-out infinite;
   }
 }
 
@@ -1259,7 +1173,7 @@ function confirmCompleteTrip() {
   }
 
   50% {
-    transform: scale(1.06);
+    transform: scale(1.04);
     box-shadow: 0 0 0 10px rgba(245, 158, 11, 0), var(--vip-shadow-primary);
   }
 }
@@ -1268,11 +1182,13 @@ function confirmCompleteTrip() {
 
   0%,
   100% {
+    transform: scale(1);
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3), var(--vip-shadow-primary);
   }
 
   50% {
-    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0), var(--vip-shadow-primary);
+    transform: scale(1.04);
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0), var(--vip-shadow-primary);
   }
 }
 
@@ -1285,20 +1201,22 @@ function confirmCompleteTrip() {
   }
 
   50% {
-    transform: scale(1.06);
+    transform: scale(1.04);
     box-shadow: 0 0 0 10px rgba(245, 158, 11, 0), var(--vip-shadow-primary);
   }
 }
 
-@keyframes nfc-ring-wave {
-  0% {
-    transform: scale(0.7);
-    opacity: 0.85;
+@keyframes nfc-pulse-cloud {
+
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4), var(--vip-shadow-primary);
   }
 
-  100% {
-    transform: scale(1.55);
-    opacity: 0;
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 8px rgba(245, 158, 11, 0), var(--vip-shadow-primary);
   }
 }
 
@@ -1315,6 +1233,15 @@ function confirmCompleteTrip() {
   align-items: baseline;
   justify-content: space-between;
   flex-shrink: 0;
+}
+
+.scanned-list-filter {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.sync-list-filter {
+  margin-bottom: 0.65rem;
 }
 
 .scanned-count {
@@ -1347,7 +1274,49 @@ function confirmCompleteTrip() {
   padding: 0.55rem 0.75rem;
   border-radius: 10px;
   background: rgba(16, 185, 129, 0.1);
+  border: 1px solid var(--vip-border);
   box-shadow: var(--vip-shadow-primary);
+
+  &.checked {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.25);
+  }
+}
+
+.recent-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.pending-cloud {
+  position: absolute;
+  top: -10px;
+  right: 20px;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 0.65rem;
+  color: #fff;
+  background: #d97706;
+  animation: nfc-pulse-cloud 2s ease-in-out infinite;
+}
+
+.recent-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.recent-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .recent-name {
@@ -1361,10 +1330,57 @@ function confirmCompleteTrip() {
   white-space: nowrap;
 }
 
-.recent-time {
+.recent-time,
+.employee-time {
+  flex-shrink: 0;
   font-size: 0.78rem;
   color: var(--vip-accent-green);
   font-weight: 600;
+}
+
+.recent-code {
+  color: var(--vip-muted);
+  font-size: 0.75rem;
+}
+
+.recent-card-number {
+  color: var(--vip-muted);
+  font-size: 0.75rem;
+}
+
+.scanned-empty {
+  flex: 1;
+  min-height: 8rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 1.75rem 1rem;
+  text-align: center;
+  border-radius: 12px;
+  border: 1px dashed rgba(148, 163, 184, 0.55);
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.9), rgba(241, 245, 249, 0.65));
+
+  i {
+    font-size: 1.75rem;
+    color: #94a3b8;
+    margin-bottom: 0.15rem;
+  }
+
+  strong {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--vip-text);
+  }
+
+  p {
+    margin: 0;
+    max-width: 16rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--vip-muted);
+  }
 }
 
 .recent-row-move,
@@ -1443,8 +1459,8 @@ function confirmCompleteTrip() {
 .employee-status {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 0.15rem;
+  align-items: center;
+  gap: 0.5rem;
 
   small {
     font-size: 0.72rem;
@@ -1475,13 +1491,6 @@ function confirmCompleteTrip() {
   i {
     font-size: 0.65rem;
   }
-}
-
-.empty-hint {
-  text-align: center;
-  color: var(--vip-muted);
-  font-size: 0.85rem;
-  padding: 1.5rem 0;
 }
 
 .fade-enter-active,

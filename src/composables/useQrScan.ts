@@ -68,7 +68,7 @@ export function useQrScan() {
     }
   }
 
-  async function scanOnce(): Promise<string | null> {
+  async function scanOnce(formats: BarcodeFormat[] = [BarcodeFormat.QrCode]): Promise<string | null> {
     errorCode.value = null
     lastBarcode.value = null
 
@@ -97,7 +97,9 @@ export function useQrScan() {
       }
 
       isScanning.value = true
-      const { barcodes } = await BarcodeScanner.scan({ formats: [BarcodeFormat.QrCode] })
+      const { barcodes } = await BarcodeScanner.scan({
+        formats: formats.length ? formats : [BarcodeFormat.QrCode],
+      })
       const barcode = barcodes[0] ?? null
       lastBarcode.value = barcode
 
@@ -129,5 +131,6 @@ export function useQrScan() {
     errorCode,
     scanOnce,
     openSettings,
+    BarcodeFormat,
   }
 }

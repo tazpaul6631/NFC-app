@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "VIP",
+    "warning": "Warning",
     "welcome": "Welcome",
     "home": "Home",
     "login": "Login",
@@ -11,7 +12,10 @@
     "password": "Password",
     "online": "Online",
     "offline": "Offline",
-    "offlineBanner": "You are offline. The app still works normally and will sync data automatically when the network is back."
+    "offlineBanner": "You are offline. The app still works normally and will sync data automatically when the network is back.",
+    "sessionExpired": "Your session has expired. Please sign in again.",
+    "serverMaintenance": "Server is under maintenance or unavailable. The app switched to offline mode and will sync when the server is back.",
+    "search": "Search..."
   },
   "home": {
     "title": "Home",
@@ -74,10 +78,11 @@
       "nfc": "NFC check-in"
     },
     "scan": {
-      "title": "Scan the vehicle QR code",
-      "subtitle": "Point the camera at the QR code on the vehicle to detect the plate and route.",
-      "hint": "Scan the QR code on the vehicle",
-      "selectPlateHint": "You are offline — select a vehicle plate from the list",
+      "title": "Employee pickup check-in",
+      "hintOnline": "Scan the QR code on the vehicle",
+      "hintOffline": "Select vehicle plate",
+      "hintSelectOnline": "If no vehicle plate, please scan the QR code on the vehicle",
+      "hintSelectOffline": "If no vehicle plate, please check the network and try again",
       "selectPlatePlaceholder": "Select vehicle plate",
       "doneLabel": "Vehicle plate scanned",
       "scanButton": "Scan QR",
@@ -86,6 +91,9 @@
       "driverLabel": "Driver",
       "busLabel": "{seats}-seat bus",
       "openSettings": "Open camera permission",
+      "loginFailed": "Vehicle plate is incorrect. Please scan the QR code again.",
+      "plateListEmpty": "No vehicle plates found. Please try again.",
+      "plateListFailed": "Could not load the vehicle plate list. Please try again.",
       "errors": {
         "CAMERA_PERMISSION_DENIED": "Camera permission was not granted. Please allow it to scan QR codes.",
         "QR_UNSUPPORTED": "This device does not support QR scanning.",
@@ -98,19 +106,24 @@
       "title": "NFC check-in",
       "subtitle": "Have employees tap their staff card on the NFC section on the phone to record boarding.",
       "needScan": "Please scan the vehicle QR code before checking in",
-      "prompt": "Tap staff card on the phone",
       "allDone": "All employees have checked in",
       "boarded": "boarded",
       "plateLabel": "Vehicle plate",
       "recent": "Checked in",
       "emptyList": "No one has checked in yet",
+      "emptyListHint": "Tap an NFC card or scan a barcode to add to the list",
+      "filterEmpty": "No matching employees found",
+      "checkInFailed": "Check-in failed. Please try again.",
+      "alreadyCheckedIn": "This employee has already checked in",
       "openSettings": "Open NFC settings",
-      "hintConnect": "Tap the round button to connect NFC",
-      "hintDisabled": "Tap the round button to enable NFC in system settings",
+      "hintConnect": "Tap the button to connect NFC",
+      "hintDisabled": "Tap the button to enable NFC in system settings",
       "hintUnsupported": "This device does not support NFC",
+      "barcode": "Scan barcode",
       "toastConnected": "NFC connected — ready to check in",
       "toastEnableNfc": "Please turn on NFC on the device",
       "toastReconnect": "NFC connection lost. Tap the button to reconnect.",
+      "completeTrip": "Complete trip",
       "completeConfirmTitle": "Confirm completion",
       "completeConfirmMessage": "Complete this trip? Checked in {boarded}/{total} employees.",
       "completeConfirmButton": "Confirm",
@@ -138,7 +151,15 @@
       "pendingTag": "Pending",
       "syncButton": "Sync now",
       "syncing": "Syncing...",
-      "successToast": "Offline data synced successfully"
+      "successToast": "Offline data synced successfully",
+      "failed": "Sync failed. Please try again."
+    },
+    "kick": {
+      "reminderTitle": "Sync reminder",
+      "reminderBody": "Please sync offline data before check-in time.",
+      "reminderModalText": "{count} item(s) not synced yet. Please sync before check-in.",
+      "kickTitle": "Check-in time",
+      "kickBody": "The display list has been refreshed."
     },
     "list": {
       "title": "Check-in list",
@@ -150,5 +171,15 @@
       "scan": "Detecting vehicle...",
       "nfc": "Recording check-in..."
     }
+  },
+  "error": {
+    "LOGIN_SUCCESS": "Login successful",
+    "VEHICLE_NOT_FOUND": "Vehicle not found",
+    "GET_DATA_SUCCESS": "Get data successful",
+    "INVALID_ACCESS_TOKEN": "Invalid access token",
+    "CREATE_SUCCESS": "Create successful",
+    "CARD_NOT_FOUND": "Card not found",
+    "EMPLOYEE_NOT_FOUND": "Employee not found",
+    "CHECK_IN_NOT_AVAILABLE": "Check-in not available"
   }
 }
