@@ -53,10 +53,10 @@ export async function setupKickNotifications(options?: { hasPendingOffline?: boo
       await LocalNotifications.cancel({ notifications: pending.notifications })
     }
 
-    const notifications = [...buildKickNotifications()]
-    if (options?.hasPendingOffline) {
-      notifications.push(...buildReminderNotifications())
-    }
+    const notifications = [
+      ...buildKickNotifications(),
+      ...(options?.hasPendingOffline ? buildReminderNotifications() : []),
+    ]
 
     await LocalNotifications.schedule({ notifications })
   } catch (e) {

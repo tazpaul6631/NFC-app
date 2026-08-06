@@ -81,7 +81,7 @@
       "title": "Điểm danh xe đưa đón nhân viên",
       "hintOnline": "Quét mã QR trên xe của bạn",
       "hintOffline": "Chọn biển số xe của bạn",
-      "hintSelectOnline": "Nếu không có biển số xe, vui lòng quét mã QR trên xe của bạn",
+      "hintSelectOnline": "Nếu không có biển số xe, vui lòng quét mã QR trên xe của bạn (có Wifi hoặc 4G)",
       "hintSelectOffline": "Nếu không có biển số xe, vui lòng kiểm tra lại mạng và thử lại",
       "selectPlatePlaceholder": "Chọn biển số xe",
       "doneLabel": "Đã quét biển số xe",

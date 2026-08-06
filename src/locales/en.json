@@ -81,7 +81,7 @@
       "title": "Employee pickup check-in",
       "hintOnline": "Scan the QR code on the vehicle",
       "hintOffline": "Select vehicle plate",
-      "hintSelectOnline": "If no vehicle plate, please scan the QR code on the vehicle",
+      "hintSelectOnline": "If no vehicle plate, please scan the QR code on the vehicle (has Wifi or 4G)",
       "hintSelectOffline": "If no vehicle plate, please check the network and try again",
       "selectPlatePlaceholder": "Select vehicle plate",
       "doneLabel": "Vehicle plate scanned",
