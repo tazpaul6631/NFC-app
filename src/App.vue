@@ -15,7 +15,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
 import { IonApp, useBackButton } from '@ionic/vue'
 import { useRouter } from 'vue-router'
 import { App as CapApp } from '@capacitor/app'
@@ -33,7 +33,10 @@ import { useAuthStore } from '@/store/auth'
 import { migrateCheckinListStore, useCheckinListStore } from '@/store/checkinList'
 import { useCheckinStepStore } from '@/store/checkinStep'
 import { registerAppToast, unregisterAppToast } from '@/services/toastBridge'
-import { setupKickNotifications } from '@/services/kickNotificationService'
+import {
+  setupKickNotifications,
+  syncReminderNotifications,
+} from '@/services/kickNotificationService'
 import { startKickWatcher } from '@/services/kickWatcher'
 import { syncOfflineQueue } from '@/services/offlineSyncService'
 import OfflineSyncModal from '@/components/OfflineSyncModal.vue'
@@ -59,6 +62,15 @@ useBackButton(-1, () => {
   }
 })
 
+/** Reminder OS chỉ schedule khi còn offline pending */
+watch(
+  () => checkinListStore.offlinePendingCount,
+  (count, prev) => {
+    if (count > 0 === (prev ?? 0) > 0) return
+    void syncReminderNotifications(count > 0)
+  },
+)
+
 onMounted(async () => {
   try {
     await SplashScreen.hide()
@@ -69,7 +81,9 @@ onMounted(async () => {
   await authStore.hydrateCachedNumberPlates()
   migrateCheckinListStore()
 
-  await setupKickNotifications()
+  await setupKickNotifications({
+    hasPendingOffline: checkinListStore.offlinePendingCount > 0,
+  })
   stopKickWatcher = startKickWatcher()
 
   if (authStore.isOnline && checkinListStore.offlinePendingCount > 0) {
@@ -82,7 +96,9 @@ onMounted(async () => {
       async (action) => {
         const type = action.notification.extra?.type
         if (type === 'reminder') {
-          await checkinListStore.showReminderModal(true)
+          if (checkinListStore.offlinePendingCount > 0) {
+            await checkinListStore.showReminderModal(true)
+          }
         }
         if (type === 'kick') {
           checkinListStore.resetDisplayList()
