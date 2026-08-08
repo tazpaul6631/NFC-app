@@ -722,6 +722,8 @@ watch(activeStep, async (step, prev) => {
   if (step === '2') {
     await refreshNfcStatus()
   } else if (prev === '2') {
+    // Kick / về step 1: clear biển đã chọn trên Select, giữ offlineVehicleOptions
+    selectedPlate.value = null
     await stopNfcScan()
   }
 })
