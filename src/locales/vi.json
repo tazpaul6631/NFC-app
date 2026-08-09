@@ -14,7 +14,7 @@
     "offline": "Ngoại tuyến",
     "offlineBanner": "Bạn đang ở chế độ offline. Hệ thống vẫn hoạt động bình thường và sẽ tự gửi dữ liệu khi có mạng trở lại.",
     "sessionExpired": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
-    "serverMaintenance": "Server đang bảo trì hoặc lỗi. Hệ thống chuyển offline và sẽ đồng bộ khi server ổn định.",
+    "serverMaintenance": "Server đang bảo trì hoặc lỗi. Vui lòng liên hệ IT và thử lại sau.",
     "search": "Tìm kiếm..."
   },
   "home": {
@@ -94,6 +94,7 @@
       "loginFailed": "Biển số xe không đúng. Vui lòng quét lại mã QR.",
       "plateListEmpty": "Không có danh sách biển số. Vui lòng thử lại.",
       "plateListFailed": "Không tải được danh sách biển số. Vui lòng thử lại.",
+      "plateListKeepCache": "Không tải được danh sách biển mới — vẫn dùng danh sách đã lưu để chọn xe.",
       "errors": {
         "CAMERA_PERMISSION_DENIED": "Chưa cấp quyền camera. Vui lòng cấp quyền để quét mã QR.",
         "QR_UNSUPPORTED": "Thiết bị không hỗ trợ quét mã QR.",
@@ -106,6 +107,7 @@
       "title": "Điểm danh NFC",
       "subtitle": "Cho nhân viên chạm thẻ nhân viên vào phần NFC trên điện thoại để ghi nhận lên xe.",
       "needScan": "Vui lòng quét mã QR trên xe trước khi điểm danh",
+      "needQrToken": "Chưa có phiên đăng nhập. Vui lòng quét mã QR trên xe (bước 1) để lấy token mới.",
       "allDone": "Đã điểm danh đủ toàn bộ nhân viên",
       "boarded": "đã lên xe",
       "plateLabel": "Biển số xe",
@@ -149,6 +151,8 @@
       "subtitle": "Có {count} bản ghi đang chờ đồng bộ lên server.",
       "empty": "Không có dữ liệu offline chờ đồng bộ.",
       "pendingTag": "Chờ sync",
+      "savedOfflineFallback": "Mạng lỗi — đã lưu offline, sẽ sync sau",
+      "promptAfterLogin": "Còn dữ liệu offline chờ đồng bộ. Vui lòng gửi ngay.",
       "syncButton": "Đồng bộ ngay",
       "syncing": "Đang đồng bộ...",
       "successToast": "Đã đồng bộ dữ liệu offline thành công",

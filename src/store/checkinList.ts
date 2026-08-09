@@ -63,6 +63,12 @@ function sortByNewest(a: CheckedInEmployee, b: CheckedInEmployee) {
   return (b.id || '').localeCompare(a.id || '')
 }
 
+function plateMatches(empPlate: string, activePlate: string) {
+  const a = activePlate.trim()
+  if (!a) return true
+  return (empPlate || '').trim() === a
+}
+
 /** Giờ local cho BE — không dùng UTC (`...Z`) */
 export function toLocalCheckInTime(value?: string | Date | null) {
   const d = value ? dayjs(value) : dayjs()
@@ -93,10 +99,15 @@ function buildEmployee(
 
 export const useCheckinListStore = defineStore('checkinList', {
   state: () => ({
-    /** Danh sách hiển thị ca hiện tại (UI) — bị reset mỗi mốc đá */
+    /**
+     * Display + persist theo từng biển (edge B: filter theo activeDisplayPlate).
+     * Kick chỉ clear mảng này; offlineQueue giữ đến khi sync OK theo từng bản ghi.
+     */
     employees: [] as CheckedInEmployee[],
-    /** Hàng đợi offline — giữ đến khi sync xong, cộng dồn nhiều ca */
+    /** Hàng đợi offline — giữ đến khi sync xong, cộng dồn nhiều ca / nhiều biển */
     offlineQueue: [] as CheckedInEmployee[],
+    /** Biển đang xem trên UI step 2 (Select / Scan QR) */
+    activeDisplayPlate: '' as string,
     /** Thời điểm Select biển số / Scan QR bắt đầu ca */
     tripStartedAt: null as string | null,
     /** Modal nhắc gửi offline (global) */
@@ -104,35 +115,53 @@ export const useCheckinListStore = defineStore('checkinList', {
   }),
 
   getters: {
-    checkedInCount: (state) => state.employees.length,
+    checkedInCount(state) {
+      const plate = state.activeDisplayPlate
+      return state.employees.filter((e) => plateMatches(e.numberPlate, plate)).length
+    },
 
-    scannedEmployees: (state) => [...state.employees].sort(sortByNewest),
+    scannedEmployees(state) {
+      const plate = state.activeDisplayPlate
+      return state.employees
+        .filter((e) => plateMatches(e.numberPlate, plate))
+        .slice()
+        .sort(sortByNewest)
+    },
 
     offlinePendingEmployees: (state) => [...state.offlineQueue].sort(sortByNewest),
 
     offlinePendingCount: (state) => state.offlineQueue.length,
 
-    isAlreadyCheckedIn: (state) => {
-      return (code: string) => {
+    isAlreadyCheckedIn(state) {
+      return (code: string, plate?: string) => {
         const key = code.trim()
         if (!key) return false
+        const p = (plate ?? state.activeDisplayPlate).trim()
         return state.employees.some(
-          (e) => e.employeeId === key || e.cardNumber === key || e.code === key,
+          (e) =>
+            plateMatches(e.numberPlate, p) &&
+            (e.employeeId === key || e.cardNumber === key || e.code === key),
         )
       }
     },
   },
 
   actions: {
+    /** Cập nhật biển đang xem — không xóa list biển khác (edge B). */
+    setActivePlate(plate: string) {
+      this.activeDisplayPlate = plate.trim()
+    },
+
     startTrip() {
       this.tripStartedAt = toLocalCheckInTime()
     },
 
     addEmployee(result: EmployeeCheckInResult, pendingSync = false, numberPlate = '') {
+      const plate = numberPlate.trim() || this.activeDisplayPlate
       const emp = buildEmployee(
         result,
         pendingSync,
-        numberPlate,
+        plate,
         this.employees.length + this.offlineQueue.length,
       )
       this.employees.unshift(emp)
@@ -154,7 +183,6 @@ export const useCheckinListStore = defineStore('checkinList', {
     async showReminderModal(withTts: boolean) {
       if (this.offlineQueue.length === 0) return
       this.reminderModalVisible = true
-      // Lazy import — không kéo Capacitor/TTS vào lúc init store
       const [{ vibrateHeavy, playBeep }, { speakText }] = await Promise.all([
         import('@/services/alertSound'),
         import('@/services/ttsService'),
@@ -172,10 +200,11 @@ export const useCheckinListStore = defineStore('checkinList', {
 
     /**
      * Sau sync thành công:
-     * - Có results → merge vào offlineQueue / employees nếu còn
-     * - Luôn xóa offlineQueue (đã gửi) và bỏ cloud trên display nếu còn
+     * - Merge tên/mã từ results vào display + queue nếu còn
+     * - Chỉ xóa khỏi offlineQueue các bản ghi đã gửi (syncedQueueIds)
+     * - Display giữ đến mốc đá; bỏ cờ pendingSync cho bản ghi đã sync
      */
-    applySyncResults(results?: EmployeeCheckInResult[] | null) {
+    applySyncResults(results?: EmployeeCheckInResult[] | null, syncedQueueIds?: string[]) {
       if (Array.isArray(results) && results.length > 0) {
         for (const result of results) {
           const empId = (result.employeeId || '').trim()
@@ -213,11 +242,20 @@ export const useCheckinListStore = defineStore('checkinList', {
         }
       }
 
-      // Sync batch thành công → xóa toàn bộ queue đã gửi
-      this.offlineQueue = []
-      this.employees.forEach((emp) => {
-        if (emp.pendingSync) emp.pendingSync = false
-      })
+      if (syncedQueueIds?.length) {
+        const idSet = new Set(syncedQueueIds)
+        this.offlineQueue = this.offlineQueue.filter((e) => !idSet.has(e.id))
+        this.employees.forEach((emp) => {
+          if (idSet.has(emp.id)) emp.pendingSync = false
+        })
+      } else {
+        // Fallback: batch sync không truyền id → xóa toàn bộ queue đã gửi
+        this.offlineQueue = []
+        this.employees.forEach((emp) => {
+          if (emp.pendingSync) emp.pendingSync = false
+        })
+      }
+
       if (this.offlineQueue.length === 0) {
         this.reminderModalVisible = false
       }
@@ -227,6 +265,7 @@ export const useCheckinListStore = defineStore('checkinList', {
     clearAll() {
       this.employees = []
       this.offlineQueue = []
+      this.activeDisplayPlate = ''
       this.tripStartedAt = null
       this.reminderModalVisible = false
     },
@@ -234,7 +273,7 @@ export const useCheckinListStore = defineStore('checkinList', {
 
   persist: {
     key: 'vip_checkin_list',
-    pick: ['employees', 'offlineQueue', 'tripStartedAt'],
+    pick: ['employees', 'offlineQueue', 'activeDisplayPlate', 'tripStartedAt'],
   },
 })
 
@@ -255,4 +294,7 @@ export function migrateCheckinListStore() {
     ...e,
     numberPlate: e.numberPlate || '',
   }))
+  if (typeof store.activeDisplayPlate !== 'string') {
+    store.activeDisplayPlate = ''
+  }
 }

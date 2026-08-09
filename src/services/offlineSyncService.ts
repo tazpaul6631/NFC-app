@@ -13,7 +13,7 @@ export function isOfflineSyncing() {
 
 /**
  * Đồng bộ offlineQueue lên server.
- * Thành công → xóa queue (applySyncResults), không đụng display đã reset.
+ * Thành công → chỉ xóa các bản ghi đã gửi khỏi queue (theo id), giữ display đến mốc đá.
  */
 export async function syncOfflineQueue(options?: { silent?: boolean }): Promise<boolean> {
   const checkinList = useCheckinListStore()
@@ -25,6 +25,7 @@ export async function syncOfflineQueue(options?: { silent?: boolean }): Promise<
   syncing = true
   try {
     const pending = [...checkinList.offlineQueue]
+    const syncedIds = pending.map((emp) => emp.id)
     const { data: body } = await employeeCheckInApi.createCheckInSyncData({
       data: pending.map((emp) => ({
         numberPlate: (emp.numberPlate || authStore.numberPlate || '').trim(),
@@ -46,7 +47,7 @@ export async function syncOfflineQueue(options?: { silent?: boolean }): Promise<
       return false
     }
 
-    checkinList.applySyncResults(body.data)
+    checkinList.applySyncResults(body.data, syncedIds)
     showAppToast({
       severity: 'success',
       summary: String(t('checkin.sync.title')),

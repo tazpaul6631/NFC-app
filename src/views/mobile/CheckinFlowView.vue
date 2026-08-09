@@ -210,6 +210,14 @@ const filteredScannedEmployees = computed(() =>
 
 onMounted(() => {
   void authStore.hydrateCachedNumberPlates()
+  // Khôi phục biển đang xem sau mở lại app (filter edge B)
+  const plate = (authStore.numberPlate || vehicle.plate || '').trim()
+  if (plate && !checkinListStore.activeDisplayPlate) {
+    checkinListStore.setActivePlate(plate)
+    vehicle.plate = plate
+  } else if (checkinListStore.activeDisplayPlate && !vehicle.plate) {
+    vehicle.plate = checkinListStore.activeDisplayPlate
+  }
 })
 
 const checkinStepStore = useCheckinStepStore()
@@ -246,12 +254,26 @@ function proceedToNfcStep() {
   checkinStepStore.setStep('2')
 }
 
+/**
+ * Best-effort cập nhật danh sách biển.
+ * Fail / rỗng → giữ cachedNumberPlates cũ (select vẫn dùng được khi mất mạng).
+ */
 async function fetchAndCacheNumberPlates() {
   showLoader(t('checkin.loading.default'))
   try {
     const { data: body } = await driverLoginApi.getVehicles()
     if (body?.success && Array.isArray(body.data) && body.data.length > 0) {
       await authStore.setCachedNumberPlates(body.data.map((item) => item.numberPlate))
+      return true
+    }
+
+    if (authStore.cachedNumberPlates.length > 0) {
+      toast.add({
+        severity: 'warn',
+        summary: t('checkin.scan.title'),
+        detail: t('checkin.scan.plateListKeepCache'),
+        life: 4000,
+      })
       return true
     }
 
@@ -263,6 +285,15 @@ async function fetchAndCacheNumberPlates() {
     })
     return false
   } catch (err) {
+    if (authStore.cachedNumberPlates.length > 0) {
+      toast.add({
+        severity: 'warn',
+        summary: t('checkin.scan.title'),
+        detail: t('checkin.scan.plateListKeepCache'),
+        life: 4000,
+      })
+      return true
+    }
     toast.add({
       severity: 'error',
       summary: t('checkin.scan.title'),
@@ -273,6 +304,17 @@ async function fetchAndCacheNumberPlates() {
   } finally {
     hideLoader()
   }
+}
+
+function openOfflineSyncPrompt() {
+  if (checkinListStore.offlinePendingCount <= 0) return
+  toast.add({
+    severity: 'warn',
+    summary: t('checkin.sync.title'),
+    detail: t('checkin.sync.promptAfterLogin'),
+    life: 4000,
+  })
+  syncModalVisible.value = true
 }
 
 async function loginWithNumberPlate(numberPlate: string) {
@@ -289,7 +331,6 @@ async function loginWithNumberPlate(numberPlate: string) {
 
   try {
     const { data: body } = await driverLoginApi.postDriverLogin({ numberPlate: plate })
-    console.log('body', body)
     if (!body?.success || !body.data?.accessToken) {
       toast.add({
         severity: 'warn',
@@ -307,10 +348,10 @@ async function loginWithNumberPlate(numberPlate: string) {
     })
     vehicle.plate = body.data.numberPlate || plate
 
-    const hasPlates = await fetchAndCacheNumberPlates()
-    if (!hasPlates) return false
-
+    // Token đã OK — vào step 2 dù getVehicles fail (giữ cache select cũ)
+    await fetchAndCacheNumberPlates()
     proceedToNfcStep()
+    openOfflineSyncPrompt()
     return true
   } catch (err) {
     toast.add({
@@ -325,8 +366,11 @@ async function loginWithNumberPlate(numberPlate: string) {
 
 function onOfflinePlateSelect(plate: string | null) {
   if (!plate || scanning.value) return
-  vehicle.plate = plate
-  authStore.numberPlate = plate
+  const next = plate.trim()
+  vehicle.plate = next
+  authStore.numberPlate = next
+  // Edge B: filter list theo biển đang chọn — cùng biển giữ NV đã quét; biển khác không có NV → rỗng
+  checkinListStore.setActivePlate(next)
   proceedToNfcStep()
 }
 
@@ -411,7 +455,64 @@ async function onBarcodeScanClick() {
 
 /* ---------- Step 2: NFC / barcode check-in list ---------- */
 function currentNumberPlate() {
-  return (vehicle.plate || authStore.numberPlate || '').trim()
+  return (vehicle.plate || authStore.numberPlate || checkinListStore.activeDisplayPlate || '').trim()
+}
+
+/**
+ * Online mà không có token → chặn gọi API, đá về step 1 bắt scan QR lấy token mới.
+ * Offline vẫn cho điểm danh (lưu queue).
+ */
+function ensureOnlineTokenOrBlock(summaryKey: 'checkin.nfc.barcode' | 'checkin.nfc.title') {
+  if (!authStore.isOnline) return true
+  if (authStore.token?.trim()) return true
+
+  toast.add({
+    severity: 'warn',
+    summary: t(summaryKey),
+    detail: t('checkin.nfc.needQrToken'),
+    life: 4000,
+  })
+  checkinStepStore.setStep('1')
+  return false
+}
+
+/** Lỗi mạng / server (không phải 401 / lỗi nghiệp vụ 4xx) → lưu offline để không mất lần quét. */
+function shouldFallbackOffline(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return true
+  const ax = err as { response?: { status?: number } }
+  const status = ax.response?.status
+  if (status == null) return true
+  if (status === 401) return false
+  if (status >= 500) return true
+  return false
+}
+
+function saveOfflineCheckIn(
+  payload: { employeeId: string; employeeName: string; cardNumber: string },
+  numberPlate: string,
+  summaryKey: 'checkin.nfc.barcode' | 'checkin.nfc.title',
+  /** true = app đang offline có chủ đích; false = online nhưng API/mạng fail → fallback */
+  intentionalOffline = false,
+) {
+  checkinListStore.addEmployee(
+    {
+      ...payload,
+      checkInTime: toLocalCheckInTime(),
+    },
+    true,
+    numberPlate,
+  )
+  void speakText('Xin cảm ơn')
+  const tag = intentionalOffline
+    ? t('checkin.sync.pendingTag')
+    : t('checkin.sync.savedOfflineFallback')
+  toast.add({
+    severity: intentionalOffline ? 'success' : 'warn',
+    summary: t(summaryKey),
+    detail: `${payload.employeeName || payload.employeeId || payload.cardNumber} — ${tag}`,
+    life: 2800,
+  })
+  return true
 }
 
 async function checkInByEmployeeId(employeeId: string) {
@@ -426,7 +527,7 @@ async function checkInByEmployeeId(employeeId: string) {
     return false
   }
 
-  if (checkinListStore.isAlreadyCheckedIn(employeeId)) {
+  if (checkinListStore.isAlreadyCheckedIn(employeeId, numberPlate)) {
     toast.add({
       severity: 'warn',
       summary: t('checkin.nfc.barcode'),
@@ -437,25 +538,15 @@ async function checkInByEmployeeId(employeeId: string) {
   }
 
   if (!authStore.isOnline) {
-    checkinListStore.addEmployee(
-      {
-        employeeId,
-        employeeName: employeeId,
-        cardNumber: '',
-        checkInTime: toLocalCheckInTime(),
-      },
-      true,
+    return saveOfflineCheckIn(
+      { employeeId, employeeName: employeeId, cardNumber: '' },
       numberPlate,
+      'checkin.nfc.barcode',
+      true,
     )
-    void speakText('Xin cảm ơn')
-    toast.add({
-      severity: 'success',
-      summary: t('checkin.nfc.barcode'),
-      detail: `${employeeId} — ${t('checkin.sync.pendingTag')}`,
-      life: 2200,
-    })
-    return true
   }
+
+  if (!ensureOnlineTokenOrBlock('checkin.nfc.barcode')) return false
 
   showLoader(t('checkin.loading.nfc'))
   try {
@@ -485,6 +576,13 @@ async function checkInByEmployeeId(employeeId: string) {
     })
     return true
   } catch (err) {
+    if (shouldFallbackOffline(err)) {
+      return saveOfflineCheckIn(
+        { employeeId, employeeName: employeeId, cardNumber: '' },
+        numberPlate,
+        'checkin.nfc.barcode',
+      )
+    }
     void speakText('Xin thử lại')
     toast.add({
       severity: 'error',
@@ -502,7 +600,7 @@ async function checkInByCardNumber(cardNumber: string) {
   const numberPlate = currentNumberPlate()
   if (!numberPlate || !cardNumber) return false
 
-  if (checkinListStore.isAlreadyCheckedIn(cardNumber)) {
+  if (checkinListStore.isAlreadyCheckedIn(cardNumber, numberPlate)) {
     toast.add({
       severity: 'warn',
       summary: t('checkin.nfc.title'),
@@ -513,25 +611,15 @@ async function checkInByCardNumber(cardNumber: string) {
   }
 
   if (!authStore.isOnline) {
-    checkinListStore.addEmployee(
-      {
-        employeeId: '',
-        employeeName: cardNumber,
-        cardNumber,
-        checkInTime: toLocalCheckInTime(),
-      },
-      true,
+    return saveOfflineCheckIn(
+      { employeeId: '', employeeName: cardNumber, cardNumber },
       numberPlate,
+      'checkin.nfc.title',
+      true,
     )
-    void speakText('Xin cảm ơn')
-    toast.add({
-      severity: 'success',
-      summary: t('checkin.nfc.title'),
-      detail: `${cardNumber} — ${t('checkin.sync.pendingTag')}`,
-      life: 2200,
-    })
-    return true
   }
+
+  if (!ensureOnlineTokenOrBlock('checkin.nfc.title')) return false
 
   showLoader(t('checkin.loading.nfc'))
   try {
@@ -561,6 +649,13 @@ async function checkInByCardNumber(cardNumber: string) {
     })
     return true
   } catch (err) {
+    if (shouldFallbackOffline(err)) {
+      return saveOfflineCheckIn(
+        { employeeId: '', employeeName: cardNumber, cardNumber },
+        numberPlate,
+        'checkin.nfc.title',
+      )
+    }
     void speakText('Xin thử lại')
     toast.add({
       severity: 'error',

@@ -14,7 +14,7 @@
     "offline": "離線",
     "offlineBanner": "目前為離線模式。系統仍可正常使用，待恢復網路後將自動傳送資料。",
     "sessionExpired": "登入已過期，請重新登入。",
-    "serverMaintenance": "伺服器維護中或發生錯誤。系統已切換離線模式，待伺服器恢復後將同步資料。",
+    "serverMaintenance": "伺服器維護中或發生錯誤。請聯繫 IT 並稍後再試。",
     "search": "搜尋..."
   },
   "home": {
@@ -94,6 +94,7 @@
       "loginFailed": "車牌號碼不正確，請重新掃描 QR Code。",
       "plateListEmpty": "找不到車牌清單，請再試一次。",
       "plateListFailed": "無法載入車牌清單，請再試一次。",
+      "plateListKeepCache": "無法載入新車牌清單 — 仍使用已儲存清單選車。",
       "errors": {
         "CAMERA_PERMISSION_DENIED": "尚未取得相機權限，請授權以掃描 QR Code。",
         "QR_UNSUPPORTED": "此裝置不支援 QR Code 掃描。",
@@ -106,6 +107,7 @@
       "title": "NFC 點名",
       "subtitle": "請員工將員工卡感應在手機的 NFC 感應區以記錄上車。",
       "needScan": "請先掃描車輛 QR Code 後再進行點名",
+      "needQrToken": "尚未登入。請先掃描車輛 QR Code（步驟 1）以取得新 token。",
       "allDone": "已完成全部員工點名",
       "boarded": "已上車",
       "plateLabel": "車牌號碼",
@@ -149,6 +151,8 @@
       "subtitle": "有 {count} 筆資料等待同步至伺服器。",
       "empty": "沒有待同步的離線資料。",
       "pendingTag": "待同步",
+      "savedOfflineFallback": "網路異常 — 已離線保存，稍後同步",
+      "promptAfterLogin": "尚有離線資料待同步，請立即傳送。",
       "syncButton": "立即同步",
       "syncing": "同步中...",
       "successToast": "離線資料已成功同步",

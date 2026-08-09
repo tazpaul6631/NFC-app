@@ -14,7 +14,7 @@
     "offline": "Offline",
     "offlineBanner": "You are offline. The app still works normally and will sync data automatically when the network is back.",
     "sessionExpired": "Your session has expired. Please sign in again.",
-    "serverMaintenance": "Server is under maintenance or unavailable. The app switched to offline mode and will sync when the server is back.",
+    "serverMaintenance": "Server is under maintenance or unavailable. Please contact IT and try again later.",
     "search": "Search..."
   },
   "home": {
@@ -94,6 +94,7 @@
       "loginFailed": "Vehicle plate is incorrect. Please scan the QR code again.",
       "plateListEmpty": "No vehicle plates found. Please try again.",
       "plateListFailed": "Could not load the vehicle plate list. Please try again.",
+      "plateListKeepCache": "Could not load a new plate list — still using the saved list to pick a vehicle.",
       "errors": {
         "CAMERA_PERMISSION_DENIED": "Camera permission was not granted. Please allow it to scan QR codes.",
         "QR_UNSUPPORTED": "This device does not support QR scanning.",
@@ -106,6 +107,7 @@
       "title": "NFC check-in",
       "subtitle": "Have employees tap their staff card on the NFC section on the phone to record boarding.",
       "needScan": "Please scan the vehicle QR code before checking in",
+      "needQrToken": "No login session. Please scan the vehicle QR code (step 1) to get a new token.",
       "allDone": "All employees have checked in",
       "boarded": "boarded",
       "plateLabel": "Vehicle plate",
@@ -149,6 +151,8 @@
       "subtitle": "{count} record(s) waiting to sync to the server.",
       "empty": "No offline data waiting to sync.",
       "pendingTag": "Pending",
+      "savedOfflineFallback": "Network error — saved offline, will sync later",
+      "promptAfterLogin": "There is offline data waiting to sync. Please send it now.",
       "syncButton": "Sync now",
       "syncing": "Syncing...",
       "successToast": "Offline data synced successfully",

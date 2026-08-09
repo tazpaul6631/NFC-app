@@ -53,13 +53,10 @@ export const useAuthStore = defineStore('auth', {
 
     setDriverSession(session: DriverSession) {
       const nextPlate = session.numberPlate.trim()
-      const plateChanged = !!this.numberPlate && this.numberPlate.trim() !== nextPlate
-      // Đổi xe → chỉ reset display ca hiện tại, giữ offlineQueue
-      if (plateChanged) {
-        void getCheckinListStore().then((checkinList) => {
-          checkinList.resetDisplayList()
-        })
-      }
+      // Edge B: không xóa list biển khác — chỉ đổi biển đang xem (filter UI)
+      void getCheckinListStore().then((checkinList) => {
+        checkinList.setActivePlate(nextPlate)
+      })
 
       this.setToken(session.accessToken)
       this.numberPlate = nextPlate
@@ -111,6 +108,22 @@ export const useAuthStore = defineStore('auth', {
       await new Promise((resolve) => setTimeout(resolve, 600))
     },
 
+    /**
+     * 401 / session hết hạn — giống kick về display:
+     * xóa token + về step 1 + resetDisplayList.
+     * Giữ offlineQueue / cachedNumberPlates để sync sau khi login lại.
+     */
+    async clearSession() {
+      this.token = ''
+      this.expiresAt = null
+      await Preferences.remove({ key: 'vip_token' })
+      await storageService.remove('vip_token')
+      const checkinList = await getCheckinListStore()
+      checkinList.resetDisplayList()
+      const { useCheckinStepStore } = await import('@/store/checkinStep')
+      useCheckinStepStore().reset()
+    },
+
     async logout() {
       const checkinList = await getCheckinListStore()
       checkinList.clearAll()
@@ -120,6 +133,8 @@ export const useAuthStore = defineStore('auth', {
       this.expiresAt = null
       await Preferences.remove({ key: 'vip_token' })
       await storageService.remove('vip_token')
+      const { useCheckinStepStore } = await import('@/store/checkinStep')
+      useCheckinStepStore().reset()
       await router.push({ name: 'CheckinFlow' })
     },
   },
