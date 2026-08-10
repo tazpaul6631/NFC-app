@@ -104,8 +104,12 @@
                   <strong v-show="checkedInCount > 0" class="scanned-count">({{ checkedInCount }})</strong>
                 </div>
 
-                <InputText v-if="scannedEmployees.length" v-model="filterEmployee" type="search"
-                  class="scanned-list-filter" :placeholder="t('common.search')" />
+                <IconField v-if="scannedEmployees.length" class="scanned-list-filter-wrap">
+                  <InputText v-model="filterEmployee" class="scanned-list-filter" :placeholder="t('common.search')" />
+                  <InputIcon v-show="!!filterEmployee" class="pi pi-times clear-filter-icon" role="button" tabindex="0"
+                    :aria-label="t('common.cancel')" @click="filterEmployee = ''"
+                    @keydown.enter.prevent="filterEmployee = ''" />
+                </IconField>
 
                 <div class="scanned-list">
                   <TransitionGroup v-if="filteredScannedEmployees.length" name="recent-row">
@@ -436,17 +440,7 @@ async function onBarcodeScanClick() {
   barcodeScanning.value = true
   try {
     const code = await scanOnce(barcodeFormats)
-    if (!code) {
-      const key = qrErrorCode.value ? `checkin.scan.errors.${qrErrorCode.value}` : 'checkin.scan.errors.NO_CODE'
-      const detail = t(key) === key ? t('checkin.scan.errors.GENERIC') : t(key)
-      toast.add({
-        severity: 'warn',
-        summary: t('checkin.nfc.barcode'),
-        detail,
-        life: 3200,
-      })
-      return
-    }
+    if (!code) return
     await checkInByEmployeeId(code)
   } finally {
     barcodeScanning.value = false
@@ -1351,6 +1345,15 @@ function confirmCompleteTrip() {
 .scanned-list-filter {
   width: 100%;
   flex-shrink: 0;
+}
+
+.scanned-list-filter-wrap {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.clear-filter-icon {
+  cursor: pointer;
 }
 
 .sync-list-filter {

@@ -1,13 +1,6 @@
 <template>
-  <Dialog
-    :visible="visible"
-    modal
-    :header="t('checkin.sync.title')"
-    :style="{ width: 'min(440px, 94vw)' }"
-    :draggable="false"
-    :closable="canClose"
-    @update:visible="onVisibleUpdate"
-  >
+  <Dialog :visible="visible" modal :header="t('checkin.sync.title')" :style="{ width: 'min(440px, 94vw)' }"
+    :draggable="false" :closable="canClose" @update:visible="onVisibleUpdate">
     <div class="list-modal-body">
       <p v-if="offlinePendingCount" class="sync-subtitle">
         {{
@@ -18,36 +11,24 @@
       </p>
       <p v-else class="sync-subtitle">{{ t('checkin.sync.empty') }}</p>
 
-      <InputText
-        v-if="offlinePendingEmployees.length"
-        v-model="filterOfflineEmployee"
-        type="search"
-        class="scanned-list-filter sync-list-filter"
-        :placeholder="t('common.search')"
-      />
+      <IconField v-if="offlinePendingEmployees.length" class="scanned-list-filter-wrap sync-list-filter">
+        <InputText v-model="filterOfflineEmployee" class="scanned-list-filter" :placeholder="t('common.search')" />
+        <InputIcon v-show="!!filterOfflineEmployee" class="pi pi-times clear-filter-icon" role="button" tabindex="0"
+          :aria-label="t('common.cancel')" @click="filterOfflineEmployee = ''"
+          @keydown.enter.prevent="filterOfflineEmployee = ''" />
+      </IconField>
 
       <div class="employee-list modal-employee-list">
-        <div
-          v-for="emp in filteredOfflinePendingEmployees"
-          :key="emp.id"
-          class="employee-row checked"
-        >
+        <div v-for="emp in filteredOfflinePendingEmployees" :key="emp.id" class="employee-row checked">
           <div class="recent-avatar-wrap">
-            <Avatar
-              :label="emp.initials"
-              shape="circle"
-              :style="{
-                backgroundColor: emp.color,
-                color: 'white',
-                fontWeight: 'bold',
-                boxShadow: 'var(--vip-shadow-primary)',
-              }"
-            />
-            <i
-              class="pi pi-cloud-upload pending-cloud"
-              :title="t('checkin.sync.pendingTag')"
-              :aria-label="t('checkin.sync.pendingTag')"
-            />
+            <Avatar :label="emp.initials" shape="circle" :style="{
+              backgroundColor: emp.color,
+              color: 'white',
+              fontWeight: 'bold',
+              boxShadow: 'var(--vip-shadow-primary)',
+            }" />
+            <i class="pi pi-cloud-upload pending-cloud" :title="t('checkin.sync.pendingTag')"
+              :aria-label="t('checkin.sync.pendingTag')" />
           </div>
           <div class="employee-info">
             <strong>{{ emp.name ? emp.name : '...' }}</strong>
@@ -60,31 +41,16 @@
           </div>
         </div>
 
-        <p v-if="!offlinePendingEmployees.length" class="empty-hint">
-          {{ t('checkin.sync.empty') }}
-        </p>
-        <p v-else-if="!filteredOfflinePendingEmployees.length" class="empty-hint">
+        <p v-if="!filteredOfflinePendingEmployees.length" class="empty-hint">
           {{ t('checkin.nfc.filterEmpty') }}
         </p>
       </div>
     </div>
 
     <template #footer>
-      <Button
-        v-if="canClose"
-        :label="t('common.cancel')"
-        severity="secondary"
-        size="large"
-        @click="close"
-      />
-      <Button
-        :label="t('checkin.sync.syncButton')"
-        icon="pi pi-sync"
-        :loading="syncing"
-        :disabled="!offlinePendingCount || !authStore.isOnline"
-        size="large"
-        @click="onSync"
-      />
+      <Button v-if="canClose" :label="t('common.cancel')" severity="secondary" size="large" @click="close" />
+      <Button :label="t('checkin.sync.syncButton')" icon="pi pi-sync" :loading="syncing"
+        :disabled="!offlinePendingCount || !authStore.isOnline" size="large" @click="onSync" />
     </template>
   </Dialog>
 </template>
@@ -200,6 +166,14 @@ async function onSync() {
 .scanned-list-filter,
 .sync-list-filter {
   width: 100%;
+}
+
+.scanned-list-filter-wrap {
+  width: 100%;
+}
+
+.clear-filter-icon {
+  cursor: pointer;
 }
 
 .modal-employee-list {
