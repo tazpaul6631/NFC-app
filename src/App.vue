@@ -31,13 +31,12 @@ import { useToast } from 'primevue/usetoast'
 import { useDevice } from '@/composables/useDevice'
 import { useAuthStore } from '@/store/auth'
 import { migrateCheckinListStore, useCheckinListStore } from '@/store/checkinList'
-import { useCheckinStepStore } from '@/store/checkinStep'
 import { registerAppToast, unregisterAppToast } from '@/services/toastBridge'
 import {
   setupKickNotifications,
   syncReminderNotifications,
 } from '@/services/kickNotificationService'
-import { startKickWatcher } from '@/services/kickWatcher'
+import { startKickWatcher, applyKickReset, runKickCatchUp } from '@/services/kickWatcher'
 import { syncOfflineQueue } from '@/services/offlineSyncService'
 import OfflineSyncModal from '@/components/OfflineSyncModal.vue'
 
@@ -45,7 +44,6 @@ const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
 const checkinListStore = useCheckinListStore()
-const checkinStepStore = useCheckinStepStore()
 const { deviceType } = useDevice()
 
 const showToast = (options: Parameters<typeof toast.add>[0]) => toast.add(options)
@@ -80,6 +78,7 @@ onMounted(async () => {
 
   await authStore.hydrateCachedNumberPlates()
   migrateCheckinListStore()
+  runKickCatchUp()
 
   await setupKickNotifications({
     hasPendingOffline: checkinListStore.offlinePendingCount > 0,
@@ -91,7 +90,7 @@ onMounted(async () => {
   }
 
   try {
-    const notifHandle = await LocalNotifications.addListener(
+    const notifActionHandle = await LocalNotifications.addListener(
       'localNotificationActionPerformed',
       async (action) => {
         const type = action.notification.extra?.type
@@ -101,20 +100,32 @@ onMounted(async () => {
           }
         }
         if (type === 'kick') {
-          checkinListStore.resetDisplayList()
-          checkinStepStore.reset()
+          applyKickReset()
         }
       },
     )
-    listenerHandles.push(notifHandle)
+    listenerHandles.push(notifActionHandle)
+
+    const notifReceivedHandle = await LocalNotifications.addListener(
+      'localNotificationReceived',
+      (notification) => {
+        if (notification.extra?.type === 'kick') {
+          applyKickReset()
+        }
+      },
+    )
+    listenerHandles.push(notifReceivedHandle)
   } catch {
     /* web */
   }
 
   try {
     const appHandle = await CapApp.addListener('appStateChange', async ({ isActive }) => {
-      if (isActive && authStore.isOnline && checkinListStore.offlinePendingCount > 0) {
-        void syncOfflineQueue({ silent: true })
+      if (isActive) {
+        runKickCatchUp()
+        if (authStore.isOnline && checkinListStore.offlinePendingCount > 0) {
+          void syncOfflineQueue({ silent: true })
+        }
       }
     })
     listenerHandles.push(appHandle)

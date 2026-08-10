@@ -32,3 +32,42 @@ export function getVNMinutesNow(date = new Date()): number {
   const utcMinutes = date.getUTCHours() * 60 + date.getUTCMinutes()
   return (utcMinutes + 7 * 60) % (24 * 60)
 }
+
+/** Phút trong ngày từ chuỗi local `YYYY-MM-DDTHH:mm:ss` (giờ VN wall-clock) */
+export function getVNMinutesFromLocalIso(iso: string): number | null {
+  const match = iso.match(/T(\d{2}):(\d{2})/)
+  if (!match) return null
+  return Number(match[1]) * 60 + Number(match[2])
+}
+
+const KICK_MINUTES = toMinutesList(KICK_TIMES)
+
+/** Mốc đá gần nhất đã qua trong ngày VN (null nếu chưa tới mốc đầu tiên) */
+export function getLatestPassedKickMinute(date = new Date()): number | null {
+  const current = getVNMinutesNow(date)
+  const passed = KICK_MINUTES.filter((m) => m <= current)
+  return passed.length ? Math.max(...passed) : null
+}
+
+/** Ca hiện tại bắt đầu trước mốc đá gần nhất → cần reset (catch-up) */
+export function isDisplayStaleForKick(
+  tripStartedAt: string | null,
+  employeeCheckinAts: string[],
+  date = new Date(),
+): boolean {
+  const latestKick = getLatestPassedKickMinute(date)
+  if (latestKick === null) return false
+
+  let tripMinutes: number | null = null
+  if (tripStartedAt) {
+    tripMinutes = getVNMinutesFromLocalIso(tripStartedAt)
+  } else if (employeeCheckinAts.length) {
+    for (const iso of employeeCheckinAts) {
+      const m = getVNMinutesFromLocalIso(iso)
+      if (m !== null && (tripMinutes === null || m < tripMinutes)) tripMinutes = m
+    }
+  }
+
+  if (tripMinutes === null) return false
+  return tripMinutes < latestKick
+}
