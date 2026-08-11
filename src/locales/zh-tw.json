@@ -125,11 +125,6 @@
       "toastConnected": "已連接 NFC — 可開始點名",
       "toastEnableNfc": "請先開啟裝置的 NFC",
       "toastReconnect": "NFC 連線中斷，請點按按鈕重新連接。",
-      "completeTrip": "完成本趟",
-      "completeConfirmTitle": "確認完成",
-      "completeConfirmMessage": "確認完成本趟？已點名 {boarded}/{total} 位員工。",
-      "completeConfirmButton": "確認",
-      "completeSuccessToast": "已完成本趟",
       "status": {
         "idle": "未連接 NFC",
         "connecting": "連接中…",
@@ -156,7 +151,8 @@
       "syncButton": "立即同步",
       "syncing": "同步中...",
       "successToast": "離線資料已成功同步",
-      "failed": "同步失敗，請再試一次。"
+      "failed": "同步失敗，請再試一次。",
+      "unknownPlate": "未知車牌"
     },
     "kick": {
       "reminderTitle": "提醒傳送資料",

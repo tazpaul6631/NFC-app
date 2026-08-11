@@ -41,6 +41,13 @@ export type NfcCardHandler = (card: ScannedNfcCard) => void | Promise<void>
 export type NfcConnectionLostReason = 'NFC_DISABLED' | 'NFC_UNSUPPORTED' | 'SESSION_ENDED'
 
 const STATUS_POLL_MS = 2500
+const DEFAULT_RESTART_DELAY_MS = 500
+const DEFAULT_RESTART_RETRIES = 2
+const SESSION_END_SUPPRESS_GRACE_MS = 800
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms))
+}
 
 export function resolveMifareFamily(techTypes: string[] = [], fallbackType?: string | null): MifareFamily {
   const techs = techTypes.map((t) => t.toLowerCase())
@@ -83,6 +90,8 @@ export function useNfcScan(options?: {
   onCard?: NfcCardHandler
   allowWebMock?: boolean
   onConnectionLost?: (reason: NfcConnectionLostReason) => void
+  /** Bỏ qua SESSION_ENDED (vd. đang mở barcode / đang restart) */
+  shouldIgnoreSessionEnd?: () => boolean
 }) {
   const isNative = Capacitor.isNativePlatform()
   const isScanning = ref(false)
@@ -94,6 +103,10 @@ export function useNfcScan(options?: {
   const listeners = ref<PluginListenerHandle[]>([])
   let statusPollTimer: ReturnType<typeof setInterval> | undefined
   let handlingLoss = false
+  /** Chặn SESSION_ENDED trễ đè session mới sau restart */
+  let suppressSessionEnd = false
+  let suppressSessionEndTimer: ReturnType<typeof setTimeout> | undefined
+  let restarting = false
 
   const canScan = computed(() => isNative && isSupported.value && nfcStatus.value === 'NFC_OK')
   const isConnected = computed(
@@ -106,6 +119,22 @@ export function useNfcScan(options?: {
     if (nfcStatus.value === 'NFC_OK') return isScanning.value ? 'scanning' : 'ready'
     return 'unknown'
   })
+
+  function beginSuppressSessionEnd() {
+    suppressSessionEnd = true
+    if (suppressSessionEndTimer) {
+      clearTimeout(suppressSessionEndTimer)
+      suppressSessionEndTimer = undefined
+    }
+  }
+
+  function endSuppressSessionEnd(graceMs = SESSION_END_SUPPRESS_GRACE_MS) {
+    if (suppressSessionEndTimer) clearTimeout(suppressSessionEndTimer)
+    suppressSessionEndTimer = setTimeout(() => {
+      suppressSessionEnd = false
+      suppressSessionEndTimer = undefined
+    }, graceMs)
+  }
 
   async function refreshStatus() {
     errorMessage.value = null
@@ -155,6 +184,16 @@ export function useNfcScan(options?: {
   }
 
   async function handleConnectionLost(reason: NfcConnectionLostReason) {
+    if (reason === 'SESSION_ENDED') {
+      // Đang restart: bỏ qua hẳn (kể cả event trễ) — không stop session mới
+      if (suppressSessionEnd || restarting) return
+      // Đang barcode: dọn session cũ im lặng
+      if (options?.shouldIgnoreSessionEnd?.()) {
+        if (isScanning.value) await stopScan()
+        return
+      }
+    }
+
     if (handlingLoss || !isScanning.value) return
     handlingLoss = true
     try {
@@ -167,7 +206,7 @@ export function useNfcScan(options?: {
         errorMessage.value = 'NFC_DISABLED'
       } else {
         // SESSION_ENDED: session chết, NFC adapter có thể vẫn bật → UI về idle
-        errorMessage.value = 'NFC_DISABLED'
+        errorMessage.value = 'SESSION_ENDED'
       }
 
       await stopScan()
@@ -187,7 +226,7 @@ export function useNfcScan(options?: {
   }
 
   async function checkHealthWhileScanning() {
-    if (!isScanning.value || !isNative || handlingLoss) return
+    if (!isScanning.value || !isNative || handlingLoss || restarting) return
 
     try {
       const support = await CapacitorNfc.isSupported()
@@ -293,6 +332,38 @@ export function useNfcScan(options?: {
     }
   }
 
+  /**
+   * Stop → cooldown (Android camera/NFC) → start, có retry.
+   * Chặn SESSION_ENDED trễ từ session cũ đè session mới.
+   */
+  async function restartScan(optionsRestart?: {
+    delayMs?: number
+    retries?: number
+  }): Promise<boolean> {
+    const delayMs = optionsRestart?.delayMs ?? DEFAULT_RESTART_DELAY_MS
+    const retries = optionsRestart?.retries ?? DEFAULT_RESTART_RETRIES
+
+    if (restarting) return isScanning.value
+    restarting = true
+    beginSuppressSessionEnd()
+    try {
+      await stopScan()
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        await sleep(delayMs)
+        try {
+          await startScan()
+          if (isScanning.value) return true
+        } catch {
+          // thử lại
+        }
+      }
+      return false
+    } finally {
+      restarting = false
+      endSuppressSessionEnd()
+    }
+  }
+
   async function openNfcSettings() {
     if (!isNative) return
     await CapacitorNfc.showSettings()
@@ -303,6 +374,7 @@ export function useNfcScan(options?: {
   }
 
   onUnmounted(() => {
+    if (suppressSessionEndTimer) clearTimeout(suppressSessionEndTimer)
     void stopScan()
   })
 
@@ -319,6 +391,7 @@ export function useNfcScan(options?: {
     refreshStatus,
     startScan,
     stopScan,
+    restartScan,
     openNfcSettings,
     clearLastCard,
   }

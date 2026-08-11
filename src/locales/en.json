@@ -125,11 +125,6 @@
       "toastConnected": "NFC connected — ready to check in",
       "toastEnableNfc": "Please turn on NFC on the device",
       "toastReconnect": "NFC connection lost. Tap the button to reconnect.",
-      "completeTrip": "Complete trip",
-      "completeConfirmTitle": "Confirm completion",
-      "completeConfirmMessage": "Complete this trip? Checked in {boarded}/{total} employees.",
-      "completeConfirmButton": "Confirm",
-      "completeSuccessToast": "Trip completed",
       "status": {
         "idle": "NFC not connected",
         "connecting": "Connecting…",
@@ -156,7 +151,8 @@
       "syncButton": "Sync now",
       "syncing": "Syncing...",
       "successToast": "Offline data synced successfully",
-      "failed": "Sync failed. Please try again."
+      "failed": "Sync failed. Please try again.",
+      "unknownPlate": "Unknown plate"
     },
     "kick": {
       "reminderTitle": "Sync reminder",

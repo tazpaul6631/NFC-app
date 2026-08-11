@@ -5,12 +5,12 @@ export interface KickTime {
 
 /** 6 mốc đá (đã trừ 30 phút từ khung gốc) — giờ VN */
 export const KICK_TIMES: KickTime[] = [
-  { hour: 4, minute: 0 },
-  { hour: 7, minute: 30 },
-  { hour: 10, minute: 30 },
-  { hour: 14, minute: 0 },
-  { hour: 21, minute: 0 },
+  { hour: 5, minute: 0 },
+  { hour: 8, minute: 30 },
+  { hour: 11, minute: 30 },
+  { hour: 15, minute: 0 },
   { hour: 22, minute: 0 },
+  { hour: 23, minute: 0 },
 ]
 
 const REMINDER_OFFSET_MINUTES = 10

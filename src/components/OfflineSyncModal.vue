@@ -1,6 +1,6 @@
 <template>
   <Dialog :visible="visible" modal :header="t('checkin.sync.title')" :style="{ width: 'min(440px, 94vw)' }"
-    :draggable="false" :closable="canClose" @update:visible="onVisibleUpdate">
+    :draggable="false" :closable="true" @update:visible="onVisibleUpdate">
     <div class="list-modal-body">
       <p v-if="offlinePendingCount" class="sync-subtitle">
         {{
@@ -19,36 +19,49 @@
       </IconField>
 
       <div class="employee-list modal-employee-list">
-        <div v-for="emp in filteredOfflinePendingEmployees" :key="emp.id" class="employee-row checked">
-          <div class="recent-avatar-wrap">
-            <Avatar :label="emp.initials" shape="circle" :style="{
-              backgroundColor: emp.color,
-              color: 'white',
-              fontWeight: 'bold',
-              boxShadow: 'var(--vip-shadow-primary)',
-            }" />
-            <i class="pi pi-cloud-upload pending-cloud" :title="t('checkin.sync.pendingTag')"
-              :aria-label="t('checkin.sync.pendingTag')" />
+        <div v-for="group in groupedOfflinePending" :key="group.plateKey" class="plate-group">
+          <div class="plate-group-header">
+            <span class="plate-group-label">
+              {{ t('checkin.nfc.plateLabel') }}:
+              <strong>{{ group.plateLabel }}</strong>
+            </span>
+            <span class="plate-group-count">({{ group.employees.length }})</span>
           </div>
-          <div class="employee-info">
-            <strong>{{ emp.name ? emp.name : '...' }}</strong>
-            <small>Id: {{ emp.code ? emp.code : '...' }}</small>
-            <small>Card: {{ emp.cardNumber ? emp.cardNumber : '...' }}</small>
-          </div>
-          <div class="employee-status">
-            <span class="employee-time">{{ emp.checkinTime }}</span>
-            <span class="status-badge pending">{{ t('checkin.sync.pendingTag') }}</span>
+
+          <div v-for="emp in group.employees" :key="emp.id" class="employee-row checked">
+            <div class="recent-avatar-wrap">
+              <Avatar :label="emp.initials" shape="circle" :style="{
+                backgroundColor: emp.color,
+                color: 'white',
+                fontWeight: 'bold',
+                boxShadow: 'var(--vip-shadow-primary)',
+              }" />
+              <i class="pi pi-cloud-upload pending-cloud" :title="t('checkin.sync.pendingTag')"
+                :aria-label="t('checkin.sync.pendingTag')" />
+            </div>
+            <div class="employee-info">
+              <strong>{{ emp.name ? emp.name : '...' }}</strong>
+              <small>Id: {{ emp.code ? emp.code : '...' }}</small>
+              <small>Card: {{ emp.cardNumber ? emp.cardNumber : '...' }}</small>
+            </div>
+            <div class="employee-status">
+              <span class="employee-time">{{ emp.checkinTime }}</span>
+              <span class="status-badge pending">{{ t('checkin.sync.pendingTag') }}</span>
+            </div>
           </div>
         </div>
 
-        <p v-if="!filteredOfflinePendingEmployees.length" class="empty-hint">
+        <p v-if="!offlinePendingEmployees.length" class="empty-hint">
+          {{ t('checkin.sync.empty') }}
+        </p>
+        <p v-else-if="!groupedOfflinePending.length" class="empty-hint">
           {{ t('checkin.nfc.filterEmpty') }}
         </p>
       </div>
     </div>
 
     <template #footer>
-      <Button v-if="canClose" :label="t('common.cancel')" severity="secondary" size="large" @click="close" />
+      <Button :label="t('common.cancel')" severity="secondary" size="large" @click="close" />
       <Button :label="t('checkin.sync.syncButton')" icon="pi pi-sync" :loading="syncing"
         :disabled="!offlinePendingCount || !authStore.isOnline" size="large" @click="onSync" />
     </template>
@@ -60,6 +73,7 @@ import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
+import type { CheckedInEmployee } from '@/store/checkinList'
 import { useCheckinListStore } from '@/store/checkinList'
 import { useAuthStore } from '@/store/auth'
 import { isOfflineSyncing, syncOfflineQueue } from '@/services/offlineSyncService'
@@ -95,11 +109,7 @@ const visible = computed(() =>
   isReminder.value ? reminderModalVisible.value : Boolean(props.modelValue),
 )
 
-/** Reminder: không đóng khi còn pending */
-const canClose = computed(() => !isReminder.value || offlinePendingCount.value === 0)
-
 function onVisibleUpdate(v: boolean) {
-  if (!v && !canClose.value) return
   if (isReminder.value) {
     if (!v) checkinListStore.closeReminderModal()
   } else {
@@ -112,12 +122,12 @@ function close() {
 }
 
 function matchesEmployeeFilter(
-  emp: { name: string; code: string; cardNumber: string },
+  emp: { name: string; code: string; cardNumber: string; numberPlate?: string },
   query: string,
 ) {
   const q = query.trim().toLowerCase()
   if (!q) return true
-  return [emp.name, emp.code, emp.cardNumber].some((v) =>
+  return [emp.name, emp.code, emp.cardNumber, emp.numberPlate].some((v) =>
     String(v || '')
       .toLowerCase()
       .includes(q),
@@ -129,6 +139,23 @@ const filteredOfflinePendingEmployees = computed(() =>
     matchesEmployeeFilter(emp, filterOfflineEmployee.value),
   ),
 )
+
+/** Gom theo biển số — thứ tự nhóm theo lần xuất hiện đầu (mới hơn thường ở đầu queue) */
+const groupedOfflinePending = computed(() => {
+  const map = new Map<string, CheckedInEmployee[]>()
+  for (const emp of filteredOfflinePendingEmployees.value) {
+    const key = (emp.numberPlate || '').trim() || '__unknown__'
+    const list = map.get(key)
+    if (list) list.push(emp)
+    else map.set(key, [emp])
+  }
+  return [...map.entries()].map(([plateKey, employees]) => ({
+    plateKey,
+    plateLabel:
+      plateKey === '__unknown__' ? String(t('checkin.sync.unknownPlate')) : plateKey,
+    employees,
+  }))
+})
 
 watch(offlinePendingCount, (count) => {
   if (count === 0 && isReminder.value) {
@@ -181,7 +208,41 @@ async function onSync() {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  gap: 0.85rem;
+}
+
+.plate-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.plate-group-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 0.5rem;
+  padding: 0.15rem 0.25rem;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--p-dialog-background, var(--p-content-background, #fff));
+}
+
+.plate-group-label {
+  font-size: 0.82rem;
+  color: var(--vip-muted);
+
+  strong {
+    color: var(--vip-text, inherit);
+    font-size: 0.95rem;
+  }
+}
+
+.plate-group-count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--vip-accent-green, #10b981);
 }
 
 .employee-row {

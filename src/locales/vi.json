@@ -125,11 +125,6 @@
       "toastConnected": "Đã kết nối NFC — sẵn sàng điểm danh",
       "toastEnableNfc": "Vui lòng bật NFC trên thiết bị",
       "toastReconnect": "NFC đã mất kết nối. Nhấn nút để kết nối lại.",
-      "completeTrip": "Hoàn tất chuyến",
-      "completeConfirmTitle": "Xác nhận hoàn tất",
-      "completeConfirmMessage": "Xác nhận hoàn tất chuyến? Đã điểm danh {boarded}/{total} nhân viên.",
-      "completeConfirmButton": "Xác nhận",
-      "completeSuccessToast": "Đã hoàn tất chuyến",
       "status": {
         "idle": "NFC chưa kết nối",
         "connecting": "Đang kết nối…",
@@ -156,7 +151,8 @@
       "syncButton": "Đồng bộ ngay",
       "syncing": "Đang đồng bộ...",
       "successToast": "Đã đồng bộ dữ liệu offline thành công",
-      "failed": "Đồng bộ thất bại. Vui lòng thử lại."
+      "failed": "Đồng bộ thất bại. Vui lòng thử lại.",
+      "unknownPlate": "Không rõ biển số"
     },
     "kick": {
       "reminderTitle": "Nhắc nhở gửi dữ liệu",

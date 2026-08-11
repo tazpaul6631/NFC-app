@@ -149,18 +149,6 @@
       </div>
     </Stepper>
 
-    <Dialog v-model:visible="completeConfirmVisible" modal :header="t('checkin.nfc.completeConfirmTitle')"
-      :style="{ width: 'min(400px, 94vw)' }" :draggable="false" :closable="false">
-      <p class="sync-subtitle">
-        {{ t('checkin.nfc.completeConfirmMessage', { boarded: checkedInCount, total: checkedInCount }) }}
-      </p>
-      <template #footer>
-        <Button :label="t('common.cancel')" severity="secondary" @click="completeConfirmVisible = false" size="large" />
-        <Button :label="t('checkin.nfc.completeConfirmButton')" icon="pi pi-check" @click="confirmCompleteTrip"
-          size="large" />
-      </template>
-    </Dialog>
-
     <OfflineSyncModal v-model="syncModalVisible" />
   </div>
 </template>
@@ -173,7 +161,6 @@ import { useToast } from 'primevue/usetoast'
 import Stepper from 'primevue/stepper'
 import StepPanels from 'primevue/steppanels'
 import StepPanel from 'primevue/steppanel'
-import Dialog from 'primevue/dialog'
 import LottieLoader from '@/components/LottieLoader.vue'
 import OfflineSyncModal from '@/components/OfflineSyncModal.vue'
 import { useQrScan } from '@/composables/useQrScan'
@@ -230,7 +217,6 @@ const completedSteps = reactive(new Set<'1' | '2'>())
 const transitioning = ref(false)
 const loadingMessage = ref('')
 const syncModalVisible = ref(false)
-const completeConfirmVisible = ref(false)
 
 function showLoader(message: string) {
   loadingMessage.value = message
@@ -243,7 +229,6 @@ function hideLoader() {
 
 /* ---------- Step 1: scan ---------- */
 const scanning = ref(false)
-const tripCompleted = ref(false)
 const selectedPlate = ref<string | null>(null)
 
 const offlineVehicleOptions = computed(() => authStore.offlineVehicleOptions)
@@ -425,7 +410,7 @@ async function handleScanClick() {
 }
 
 async function onBarcodeScanClick() {
-  if (barcodeScanning.value) return
+  if (barcodeScanning.value || nfcResuming.value) return
 
   if (!isNativeScan) {
     toast.add({
@@ -437,13 +422,39 @@ async function onBarcodeScanClick() {
     return
   }
 
+  /** Camera barcode cắt NFC → giữ flag đến hết reconnect để tránh race SESSION_ENDED */
+  const shouldResumeNfc = nfcConnected.value || nfcSessionActive.value
   barcodeScanning.value = true
+  nfcResuming.value = shouldResumeNfc
   try {
+    if (nfcConnected.value) {
+      await stopNfcScan()
+    }
     const code = await scanOnce(barcodeFormats)
-    if (!code) return
-    await checkInByEmployeeId(code)
+    if (code) {
+      await checkInByEmployeeId(code)
+    }
   } finally {
+    if (shouldResumeNfc && activeStep.value === '2') {
+      nfcConnecting.value = true
+      try {
+        const ok = await restartNfcScan({ delayMs: 500, retries: 2 })
+        if (ok) {
+          nfcSessionActive.value = true
+        } else {
+          toast.add({
+            severity: 'warn',
+            summary: t('checkin.nfc.title'),
+            detail: t('checkin.nfc.toastReconnect'),
+            life: 3200,
+          })
+        }
+      } finally {
+        nfcConnecting.value = false
+      }
+    }
     barcodeScanning.value = false
+    nfcResuming.value = false
   }
 }
 
@@ -664,6 +675,10 @@ async function checkInByCardNumber(cardNumber: string) {
 }
 
 const nfcConnecting = ref(false)
+/** Đã từng kết nối NFC trong step 2 → sau barcode / session end tự reconnect */
+const nfcSessionActive = ref(false)
+/** Đang pause NFC vì barcode / đang restart — bỏ toast + bỏ xử lý SESSION_ENDED sớm */
+const nfcResuming = ref(false)
 
 const {
   isConnected: nfcConnected,
@@ -673,13 +688,27 @@ const {
   refreshStatus: refreshNfcStatus,
   startScan: startNfcScan,
   stopScan: stopNfcScan,
+  restartScan: restartNfcScan,
   openNfcSettings,
 } = useNfcScan({
   onCard: (card) => {
     const cardNumber = card.cardNumber ?? card.uid
     if (cardNumber) void checkInByCardNumber(cardNumber)
   },
+  shouldIgnoreSessionEnd: () => barcodeScanning.value || nfcResuming.value,
   onConnectionLost: (reason) => {
+    if (barcodeScanning.value || nfcResuming.value) return
+
+    // Session bị hệ thống cắt (không do barcode) → tự reconnect nếu ca còn cần NFC
+    if (
+      reason === 'SESSION_ENDED' &&
+      nfcSessionActive.value &&
+      activeStep.value === '2'
+    ) {
+      void resumeNfcAfterInterrupt()
+      return
+    }
+
     const detail =
       reason === 'NFC_UNSUPPORTED'
         ? t('checkin.nfc.errors.NFC_UNSUPPORTED')
@@ -693,8 +722,21 @@ const {
   },
 })
 
+async function resumeNfcAfterInterrupt() {
+  if (nfcResuming.value || barcodeScanning.value || activeStep.value !== '2') return
+  nfcResuming.value = true
+  nfcConnecting.value = true
+  try {
+    const ok = await restartNfcScan({ delayMs: 500, retries: 2 })
+    if (ok) nfcSessionActive.value = true
+  } finally {
+    nfcConnecting.value = false
+    nfcResuming.value = false
+  }
+}
+
 const nfcUiState = computed(() => {
-  if (nfcConnecting.value) return 'connecting'
+  if (nfcConnecting.value || nfcResuming.value) return 'connecting'
   if (nfcConnected.value) return 'connected'
   if (nfcStatus.value === 'NFC_DISABLED') return 'disabled'
   if (nfcStatusLabel.value === 'unsupported') return 'unsupported'
@@ -737,50 +779,58 @@ const nfcHintText = computed(() => {
 })
 
 const nfcPadIcon = computed(() => {
-  if (nfcConnecting.value) return 'pi pi-spin pi-spinner'
+  if (nfcConnecting.value || nfcResuming.value) return 'pi pi-spin pi-spinner'
   if (nfcConnected.value) return 'pi pi-wifi'
   if (nfcStatus.value === 'NFC_DISABLED') return 'pi pi-ban'
   return 'pi pi-link'
 })
 
-async function connectNfc() {
+async function connectNfc(options?: { silent?: boolean }) {
   if (nfcConnected.value || nfcConnecting.value) return
 
+  const silent = options?.silent === true
   nfcConnecting.value = true
   try {
     await refreshNfcStatus()
 
     if (nfcStatus.value === 'NFC_DISABLED') {
-      toast.add({
-        severity: 'warn',
-        summary: t('checkin.nfc.title'),
-        detail: t('checkin.nfc.toastEnableNfc'),
-        life: 3200,
-      })
-      await openNfcSettings()
+      if (!silent) {
+        toast.add({
+          severity: 'warn',
+          summary: t('checkin.nfc.title'),
+          detail: t('checkin.nfc.toastEnableNfc'),
+          life: 3200,
+        })
+        await openNfcSettings()
+      }
       return
     }
 
     if (nfcStatusLabel.value === 'unsupported' || nfcStatus.value === 'NO_NFC') {
-      toast.add({
-        severity: 'warn',
-        summary: t('checkin.nfc.title'),
-        detail: t('checkin.nfc.errors.NFC_UNSUPPORTED'),
-        life: 3200,
-      })
+      if (!silent) {
+        toast.add({
+          severity: 'warn',
+          summary: t('checkin.nfc.title'),
+          detail: t('checkin.nfc.errors.NFC_UNSUPPORTED'),
+          life: 3200,
+        })
+      }
       return
     }
 
     await startNfcScan()
 
     if (nfcConnected.value) {
-      toast.add({
-        severity: 'success',
-        summary: t('checkin.nfc.title'),
-        detail: t('checkin.nfc.toastConnected'),
-        life: 2200,
-      })
-    } else if (nfcError.value) {
+      nfcSessionActive.value = true
+      if (!silent) {
+        toast.add({
+          severity: 'success',
+          summary: t('checkin.nfc.title'),
+          detail: t('checkin.nfc.toastConnected'),
+          life: 2200,
+        })
+      }
+    } else if (nfcError.value && !silent) {
       const key = `checkin.nfc.errors.${nfcError.value}`
       const detail = t(key) === key ? nfcError.value : t(key)
       toast.add({
@@ -791,12 +841,14 @@ async function connectNfc() {
       })
     }
   } catch (err) {
-    toast.add({
-      severity: 'error',
-      summary: t('checkin.nfc.title'),
-      detail: err instanceof Error ? err.message : t('checkin.nfc.errors.GENERIC'),
-      life: 3200,
-    })
+    if (!silent) {
+      toast.add({
+        severity: 'error',
+        summary: t('checkin.nfc.title'),
+        detail: err instanceof Error ? err.message : t('checkin.nfc.errors.GENERIC'),
+        life: 3200,
+      })
+    }
   } finally {
     nfcConnecting.value = false
   }
@@ -813,6 +865,8 @@ watch(activeStep, async (step, prev) => {
   } else if (prev === '2') {
     // Kick / về step 1: clear biển đã chọn trên Select, giữ offlineVehicleOptions
     selectedPlate.value = null
+    nfcSessionActive.value = false
+    nfcResuming.value = false
     await stopNfcScan()
   }
 })
@@ -820,22 +874,6 @@ watch(activeStep, async (step, prev) => {
 onUnmounted(() => {
   void stopNfcScan()
 })
-
-function completeTrip() {
-  completedSteps.add('2')
-  tripCompleted.value = true
-}
-
-function confirmCompleteTrip() {
-  completeConfirmVisible.value = false
-  completeTrip()
-  toast.add({
-    severity: 'success',
-    summary: t('checkin.nfc.completeTrip'),
-    detail: t('checkin.nfc.completeSuccessToast'),
-    life: 2500,
-  })
-}
 </script>
 
 <style scoped lang="scss">
