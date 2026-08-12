@@ -86,7 +86,7 @@ function buildEmployee(
     id: `${result.employeeId || result.cardNumber}-${checkinAt}-${index}`,
     employeeId: result.employeeId,
     name: result.employeeName,
-    code: result.employeeId || result.cardNumber,
+    code: result.employeeId,
     cardNumber: result.cardNumber,
     checkinTime: dayjs(checkinAt).format('HH:mm:ss'),
     checkinAt,
@@ -183,14 +183,14 @@ export const useCheckinListStore = defineStore('checkinList', {
     async showReminderModal(withTts: boolean) {
       if (this.offlineQueue.length === 0) return
       this.reminderModalVisible = true
-      const [{ vibrateHeavy, playBeep }, { speakText }] = await Promise.all([
+      const [{ vibrateHeavy, playBeep }, { speakImportantText }] = await Promise.all([
         import('@/services/alertSound'),
         import('@/services/ttsService'),
       ])
       await vibrateHeavy()
       await playBeep()
       if (withTts) {
-        await speakText('Vui lòng gửi dữ liệu offline trước giờ checkin')
+        await speakImportantText('Vui lòng gửi dữ liệu offline trước giờ checkin')
       }
     },
 

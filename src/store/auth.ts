@@ -1,9 +1,12 @@
 import { defineStore } from 'pinia'
 import { Preferences } from '@capacitor/preferences'
 import storageService from '@/services/storage.service'
+import type { DriverPlateItem } from '@/api/driverLogin'
 import {
+  fromDriverPlateItem,
   loadCachedNumberPlates,
   saveCachedNumberPlates,
+  type CachedVehicle,
 } from '@/services/vehiclePlateCache'
 import router from '@/router'
 
@@ -23,7 +26,11 @@ export interface DriverSession {
   numberPlate: string
   accessToken: string
   expiresAt: string
+  numOfSeat?: number | null
+  registeredCount?: number | null
 }
+
+export type { CachedVehicle }
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -32,7 +39,11 @@ export const useAuthStore = defineStore('auth', {
     numberPlate: '' as string,
     /** Chỉ lưu token expiry từ BE — không dùng để clear danh sách điểm danh */
     expiresAt: null as string | null,
-    cachedNumberPlates: [] as string[],
+    /** Cache xe (biển + ghế + đăng ký) — kick không xóa */
+    cachedVehicles: [] as CachedVehicle[],
+    /** Stats xe đang chọn (step 2) */
+    activeNumOfSeat: null as number | null,
+    activeRegisteredCount: null as number | null,
     isOnline: true,
     lastSync: null as string | null,
     platesHydrated: false,
@@ -41,14 +52,59 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isAuthenticated: (state) => !!state.token,
     getUserName: (state) => state.user?.name || 'Guest',
+    cachedNumberPlates: (state) => state.cachedVehicles.map((v) => v.numberPlate),
     offlineVehicleOptions: (state) =>
-      state.cachedNumberPlates.map((plate) => ({ label: plate, value: plate })),
+      state.cachedVehicles.map((v) => ({ label: v.numberPlate, value: v.numberPlate })),
   },
 
   actions: {
     setToken(token: string) {
       this.token = token
       void Preferences.set({ key: 'vip_token', value: token })
+    },
+
+    findCachedVehicle(plate: string) {
+      const key = plate.trim()
+      if (!key) return undefined
+      return this.cachedVehicles.find((v) => v.numberPlate === key)
+    },
+
+    upsertCachedVehicle(vehicle: CachedVehicle) {
+      const plate = vehicle.numberPlate.trim()
+      if (!plate) return
+      const next: CachedVehicle = {
+        numberPlate: plate,
+        numOfSeat: vehicle.numOfSeat ?? null,
+        registeredCount: vehicle.registeredCount ?? null,
+      }
+      const idx = this.cachedVehicles.findIndex((v) => v.numberPlate === plate)
+      if (idx >= 0) {
+        const prev = this.cachedVehicles[idx]
+        this.cachedVehicles[idx] = {
+          numberPlate: plate,
+          numOfSeat: next.numOfSeat ?? prev.numOfSeat,
+          registeredCount: next.registeredCount ?? prev.registeredCount,
+        }
+      } else {
+        this.cachedVehicles.push(next)
+      }
+      void saveCachedNumberPlates(this.cachedVehicles)
+    },
+
+    setActiveVehicleMeta(
+      plate: string,
+      meta?: { numOfSeat?: number | null; registeredCount?: number | null },
+    ) {
+      const cached = this.findCachedVehicle(plate)
+      this.activeNumOfSeat = meta?.numOfSeat ?? cached?.numOfSeat ?? null
+      this.activeRegisteredCount = meta?.registeredCount ?? cached?.registeredCount ?? null
+      if (meta?.numOfSeat != null || meta?.registeredCount != null) {
+        this.upsertCachedVehicle({
+          numberPlate: plate,
+          numOfSeat: meta.numOfSeat ?? cached?.numOfSeat ?? null,
+          registeredCount: meta.registeredCount ?? cached?.registeredCount ?? null,
+        })
+      }
     },
 
     setDriverSession(session: DriverSession) {
@@ -61,25 +117,46 @@ export const useAuthStore = defineStore('auth', {
       this.setToken(session.accessToken)
       this.numberPlate = nextPlate
       this.expiresAt = session.expiresAt
+      this.setActiveVehicleMeta(nextPlate, {
+        numOfSeat: session.numOfSeat,
+        registeredCount: session.registeredCount,
+      })
     },
 
-    async setCachedNumberPlates(plates: string[]) {
-      const unique = [...new Set(plates.map((p) => p.trim()).filter(Boolean))]
-      this.cachedNumberPlates = unique
+    async setCachedVehicles(items: DriverPlateItem[] | CachedVehicle[]) {
+      const unique = new Map<string, CachedVehicle>()
+      for (const item of items) {
+        const v = fromDriverPlateItem(item) ?? null
+        if (!v) continue
+        unique.set(v.numberPlate, v)
+      }
+      this.cachedVehicles = [...unique.values()]
       this.lastSync = new Date().toISOString()
       this.platesHydrated = true
-      await saveCachedNumberPlates(unique)
+      await saveCachedNumberPlates(this.cachedVehicles)
+      if (this.numberPlate) {
+        this.setActiveVehicleMeta(this.numberPlate)
+      }
+    },
+
+    /** @deprecated dùng setCachedVehicles — giữ alias cho chỗ gọi cũ */
+    async setCachedNumberPlates(plates: string[]) {
+      await this.setCachedVehicles(plates.map((p) => ({ numberPlate: p })))
     },
 
     async hydrateCachedNumberPlates() {
       try {
-        const { plates, lastSync } = await loadCachedNumberPlates()
+        const { vehicles, lastSync } = await loadCachedNumberPlates()
 
-        if (plates.length > 0) {
-          this.cachedNumberPlates = plates
+        if (vehicles.length > 0) {
+          this.cachedVehicles = vehicles
           if (lastSync) this.lastSync = lastSync
-        } else if (this.cachedNumberPlates.length > 0) {
-          await saveCachedNumberPlates(this.cachedNumberPlates)
+        } else if (this.cachedVehicles.length > 0) {
+          await saveCachedNumberPlates(this.cachedVehicles)
+        }
+
+        if (this.numberPlate) {
+          this.setActiveVehicleMeta(this.numberPlate)
         }
       } finally {
         this.platesHydrated = true
@@ -111,11 +188,13 @@ export const useAuthStore = defineStore('auth', {
     /**
      * 401 / session hết hạn — giống kick về display:
      * xóa token + về step 1 + resetDisplayList.
-     * Giữ offlineQueue / cachedNumberPlates để sync sau khi login lại.
+     * Giữ offlineQueue / cachedVehicles để sync sau khi login lại.
      */
     async clearSession() {
       this.token = ''
       this.expiresAt = null
+      this.activeNumOfSeat = null
+      this.activeRegisteredCount = null
       await Preferences.remove({ key: 'vip_token' })
       await storageService.remove('vip_token')
       const checkinList = await getCheckinListStore()
@@ -131,6 +210,8 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
       this.numberPlate = ''
       this.expiresAt = null
+      this.activeNumOfSeat = null
+      this.activeRegisteredCount = null
       await Preferences.remove({ key: 'vip_token' })
       await storageService.remove('vip_token')
       const { useCheckinStepStore } = await import('@/store/checkinStep')
@@ -141,6 +222,15 @@ export const useAuthStore = defineStore('auth', {
 
   persist: {
     key: 'vip_auth_storage',
-    pick: ['token', 'user', 'numberPlate', 'expiresAt', 'cachedNumberPlates', 'lastSync'],
+    pick: [
+      'token',
+      'user',
+      'numberPlate',
+      'expiresAt',
+      'cachedVehicles',
+      'activeNumOfSeat',
+      'activeRegisteredCount',
+      'lastSync',
+    ],
   },
 })

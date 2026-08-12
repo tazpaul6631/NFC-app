@@ -110,6 +110,8 @@
       "needQrToken": "No login session. Please scan the vehicle QR code (step 1) to get a new token.",
       "allDone": "All employees have checked in",
       "boarded": "boarded",
+      "boardedCount": "Boarded",
+      "registeredCount": "Registered",
       "plateLabel": "Vehicle plate",
       "recent": "Checked in",
       "emptyList": "No one has checked in yet",

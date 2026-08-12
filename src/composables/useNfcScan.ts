@@ -41,9 +41,10 @@ export type NfcCardHandler = (card: ScannedNfcCard) => void | Promise<void>
 export type NfcConnectionLostReason = 'NFC_DISABLED' | 'NFC_UNSUPPORTED' | 'SESSION_ENDED'
 
 const STATUS_POLL_MS = 2500
-const DEFAULT_RESTART_DELAY_MS = 500
+/** Android camera/ML Kit thường giữ NFC ~1s sau khi đóng */
+const DEFAULT_RESTART_DELAY_MS = 1200
 const DEFAULT_RESTART_RETRIES = 2
-const SESSION_END_SUPPRESS_GRACE_MS = 800
+const SESSION_END_SUPPRESS_GRACE_MS = 2000
 
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms))
@@ -321,7 +322,8 @@ export function useNfcScan(options?: {
   async function stopScan() {
     stopStatusPoll()
     try {
-      if (isScanning.value) {
+      // Luôn gọi native stop — camera có thể đã giết session trong lúc JS isScanning = false
+      if (isNative) {
         await CapacitorNfc.stopScanning()
       }
     } catch {
@@ -339,11 +341,20 @@ export function useNfcScan(options?: {
   async function restartScan(optionsRestart?: {
     delayMs?: number
     retries?: number
+    force?: boolean
   }): Promise<boolean> {
     const delayMs = optionsRestart?.delayMs ?? DEFAULT_RESTART_DELAY_MS
     const retries = optionsRestart?.retries ?? DEFAULT_RESTART_RETRIES
 
-    if (restarting) return isScanning.value
+    if (restarting) {
+      if (!optionsRestart?.force) return isScanning.value
+      const waitStart = Date.now()
+      while (restarting && Date.now() - waitStart < 4000) {
+        await sleep(100)
+      }
+      if (restarting) return isScanning.value
+    }
+
     restarting = true
     beginSuppressSessionEnd()
     try {

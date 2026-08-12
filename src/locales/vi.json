@@ -110,6 +110,8 @@
       "needQrToken": "Chưa có phiên đăng nhập. Vui lòng quét mã QR trên xe (bước 1) để lấy token mới.",
       "allDone": "Đã điểm danh đủ toàn bộ nhân viên",
       "boarded": "đã lên xe",
+      "boardedCount": "Đã lên xe",
+      "registeredCount": "Đã đăng ký",
       "plateLabel": "Biển số xe",
       "recent": "Đã điểm danh",
       "emptyList": "Chưa có ai điểm danh",

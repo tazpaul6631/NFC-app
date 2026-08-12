@@ -101,7 +101,15 @@
               <div class="scanned-list-block">
                 <div class="scanned-list-head">
                   <span class="recent-title">{{ t('checkin.nfc.recent') }}</span>
-                  <strong v-show="checkedInCount > 0" class="scanned-count">({{ checkedInCount }})</strong>
+                  <div class="scanned-count-row">
+                    <span class="scanned-stat" :title="t('checkin.nfc.boardedCount')">
+                      <strong><i class="pi pi-users" /> {{ checkedInCount }}/{{ seatTotalLabel }}</strong>
+                    </span>
+                    <span class="scanned-stat-separator">|</span>
+                    <span class="scanned-stat" :title="t('checkin.nfc.registeredCount')">
+                      <strong><i class="pi pi-id-card" /> {{ registeredCountLabel }}/{{ seatTotalLabel }}</strong>
+                    </span>
+                  </div>
                 </div>
 
                 <IconField v-if="scannedEmployees.length" class="scanned-list-filter-wrap">
@@ -170,7 +178,7 @@ import { useAuthStore } from '@/store/auth'
 import { toLocalCheckInTime, useCheckinListStore } from '@/store/checkinList'
 import driverLoginApi from '@/api/driverLogin'
 import employeeCheckInApi from '@/api/employeeCheckIn'
-import { speakText } from '@/services/ttsService'
+import { speakImportantText } from '@/services/ttsService'
 import { resolveApiError, resolveApiMessage } from '@/utils/apiMessage'
 
 const { t } = useI18n()
@@ -200,7 +208,10 @@ const filteredScannedEmployees = computed(() =>
 )
 
 onMounted(() => {
-  void authStore.hydrateCachedNumberPlates()
+  void authStore.hydrateCachedNumberPlates().then(() => {
+    const plate = (authStore.numberPlate || vehicle.plate || checkinListStore.activeDisplayPlate || '').trim()
+    if (plate) authStore.setActiveVehicleMeta(plate)
+  })
   // Khôi phục biển đang xem sau mở lại app (filter edge B)
   const plate = (authStore.numberPlate || vehicle.plate || '').trim()
   if (plate && !checkinListStore.activeDisplayPlate) {
@@ -233,6 +244,15 @@ const selectedPlate = ref<string | null>(null)
 
 const offlineVehicleOptions = computed(() => authStore.offlineVehicleOptions)
 
+const { activeNumOfSeat, activeRegisteredCount } = storeToRefs(authStore)
+
+function formatSeatStat(value: number | null | undefined) {
+  return value == null ? '—' : String(value)
+}
+
+const seatTotalLabel = computed(() => formatSeatStat(activeNumOfSeat.value))
+const registeredCountLabel = computed(() => formatSeatStat(activeRegisteredCount.value))
+
 const vehicle = reactive({
   plate: authStore.numberPlate || ''
 })
@@ -252,11 +272,11 @@ async function fetchAndCacheNumberPlates() {
   try {
     const { data: body } = await driverLoginApi.getVehicles()
     if (body?.success && Array.isArray(body.data) && body.data.length > 0) {
-      await authStore.setCachedNumberPlates(body.data.map((item) => item.numberPlate))
+      await authStore.setCachedVehicles(body.data)
       return true
     }
 
-    if (authStore.cachedNumberPlates.length > 0) {
+    if (authStore.cachedVehicles.length > 0) {
       toast.add({
         severity: 'warn',
         summary: t('checkin.scan.title'),
@@ -274,7 +294,7 @@ async function fetchAndCacheNumberPlates() {
     })
     return false
   } catch (err) {
-    if (authStore.cachedNumberPlates.length > 0) {
+    if (authStore.cachedVehicles.length > 0) {
       toast.add({
         severity: 'warn',
         summary: t('checkin.scan.title'),
@@ -334,6 +354,8 @@ async function loginWithNumberPlate(numberPlate: string) {
       numberPlate: body.data.numberPlate || plate,
       accessToken: body.data.accessToken,
       expiresAt: body.data.expiresAt,
+      numOfSeat: body.data.numOfSeat,
+      registeredCount: body.data.registeredCount,
     })
     vehicle.plate = body.data.numberPlate || plate
 
@@ -358,6 +380,7 @@ function onOfflinePlateSelect(plate: string | null) {
   const next = plate.trim()
   vehicle.plate = next
   authStore.numberPlate = next
+  authStore.setActiveVehicleMeta(next)
   // Edge B: filter list theo biển đang chọn — cùng biển giữ NV đã quét; biển khác không có NV → rỗng
   checkinListStore.setActivePlate(next)
   proceedToNfcStep()
@@ -409,6 +432,35 @@ async function handleScanClick() {
   }
 }
 
+async function waitUntilAppActive(timeoutMs = 4000) {
+  try {
+    const { App } = await import('@capacitor/app')
+    const state = await App.getState()
+    if (state.isActive) return
+
+    await new Promise<void>((resolve) => {
+      let settled = false
+      let handle: { remove: () => Promise<void> } | undefined
+      const finish = () => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        void handle?.remove()
+        resolve()
+      }
+      const timer = setTimeout(finish, timeoutMs)
+      void App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) finish()
+      }).then((h) => {
+        handle = h
+        if (settled) void h.remove()
+      })
+    })
+  } catch {
+    /* web */
+  }
+}
+
 async function onBarcodeScanClick() {
   if (barcodeScanning.value || nfcResuming.value) return
 
@@ -427,9 +479,7 @@ async function onBarcodeScanClick() {
   barcodeScanning.value = true
   nfcResuming.value = shouldResumeNfc
   try {
-    if (nfcConnected.value) {
-      await stopNfcScan()
-    }
+    await stopNfcScan()
     const code = await scanOnce(barcodeFormats)
     if (code) {
       await checkInByEmployeeId(code)
@@ -438,7 +488,8 @@ async function onBarcodeScanClick() {
     if (shouldResumeNfc && activeStep.value === '2') {
       nfcConnecting.value = true
       try {
-        const ok = await restartNfcScan({ delayMs: 500, retries: 2 })
+        await waitUntilAppActive()
+        const ok = await restartNfcScan({ delayMs: 1200, retries: 2, force: true })
         if (ok) {
           nfcSessionActive.value = true
         } else {
@@ -507,7 +558,7 @@ function saveOfflineCheckIn(
     true,
     numberPlate,
   )
-  void speakText('Xin cảm ơn')
+  void speakImportantText('Xin cảm ơn')
   const tag = intentionalOffline
     ? t('checkin.sync.pendingTag')
     : t('checkin.sync.savedOfflineFallback')
@@ -533,6 +584,7 @@ async function checkInByEmployeeId(employeeId: string) {
   }
 
   if (checkinListStore.isAlreadyCheckedIn(employeeId, numberPlate)) {
+    void speakImportantText(t('checkin.nfc.alreadyCheckedIn'))
     toast.add({
       severity: 'warn',
       summary: t('checkin.nfc.barcode'),
@@ -561,7 +613,7 @@ async function checkInByEmployeeId(employeeId: string) {
     })
 
     if (!body?.success || !body.data) {
-      void speakText('Xin thử lại')
+      void speakImportantText('Xin thử lại')
       toast.add({
         severity: 'warn',
         summary: t('checkin.nfc.barcode'),
@@ -572,7 +624,7 @@ async function checkInByEmployeeId(employeeId: string) {
     }
 
     checkinListStore.addEmployee(body.data, false, numberPlate)
-    void speakText('Xin cảm ơn')
+    void speakImportantText('Xin cảm ơn')
     toast.add({
       severity: 'success',
       summary: t('checkin.nfc.barcode'),
@@ -588,7 +640,7 @@ async function checkInByEmployeeId(employeeId: string) {
         'checkin.nfc.barcode',
       )
     }
-    void speakText('Xin thử lại')
+    void speakImportantText('Xin thử lại')
     toast.add({
       severity: 'error',
       summary: t('checkin.nfc.barcode'),
@@ -606,6 +658,7 @@ async function checkInByCardNumber(cardNumber: string) {
   if (!numberPlate || !cardNumber) return false
 
   if (checkinListStore.isAlreadyCheckedIn(cardNumber, numberPlate)) {
+    void speakImportantText(t('checkin.nfc.alreadyCheckedIn'))
     toast.add({
       severity: 'warn',
       summary: t('checkin.nfc.title'),
@@ -634,7 +687,7 @@ async function checkInByCardNumber(cardNumber: string) {
     })
 
     if (!body?.success || !body.data) {
-      void speakText('Xin thử lại')
+      void speakImportantText('Xin thử lại')
       toast.add({
         severity: 'warn',
         summary: t('checkin.nfc.title'),
@@ -645,7 +698,7 @@ async function checkInByCardNumber(cardNumber: string) {
     }
 
     checkinListStore.addEmployee(body.data, false, numberPlate)
-    void speakText('Xin cảm ơn')
+    void speakImportantText('Xin cảm ơn')
     toast.add({
       severity: 'success',
       summary: t('checkin.nfc.title'),
@@ -661,7 +714,7 @@ async function checkInByCardNumber(cardNumber: string) {
         'checkin.nfc.title',
       )
     }
-    void speakText('Xin thử lại')
+    void speakImportantText('Xin thử lại')
     toast.add({
       severity: 'error',
       summary: t('checkin.nfc.title'),
@@ -727,7 +780,7 @@ async function resumeNfcAfterInterrupt() {
   nfcResuming.value = true
   nfcConnecting.value = true
   try {
-    const ok = await restartNfcScan({ delayMs: 500, retries: 2 })
+    const ok = await restartNfcScan({ delayMs: 1200, retries: 2, force: true })
     if (ok) nfcSessionActive.value = true
   } finally {
     nfcConnecting.value = false
@@ -785,10 +838,12 @@ const nfcPadIcon = computed(() => {
   return 'pi pi-link'
 })
 
-async function connectNfc(options?: { silent?: boolean }) {
-  if (nfcConnected.value || nfcConnecting.value) return
+async function connectNfc(options?: { silent?: boolean; force?: boolean }) {
+  if (nfcConnecting.value || nfcResuming.value) return
 
   const silent = options?.silent === true
+  const force = options?.force === true
+
   nfcConnecting.value = true
   try {
     await refreshNfcStatus()
@@ -812,6 +867,30 @@ async function connectNfc(options?: { silent?: boolean }) {
           severity: 'warn',
           summary: t('checkin.nfc.title'),
           detail: t('checkin.nfc.errors.NFC_UNSUPPORTED'),
+          life: 3200,
+        })
+      }
+      return
+    }
+
+    if (force || nfcConnected.value) {
+      nfcResuming.value = true
+      const ok = await restartNfcScan({ delayMs: 1200, retries: 2, force: true })
+      if (ok) {
+        nfcSessionActive.value = true
+        if (!silent) {
+          toast.add({
+            severity: 'success',
+            summary: t('checkin.nfc.title'),
+            detail: t('checkin.nfc.toastConnected'),
+            life: 2200,
+          })
+        }
+      } else if (!silent) {
+        toast.add({
+          severity: 'warn',
+          summary: t('checkin.nfc.title'),
+          detail: t('checkin.nfc.toastReconnect'),
           life: 3200,
         })
       }
@@ -850,12 +929,18 @@ async function connectNfc(options?: { silent?: boolean }) {
       })
     }
   } finally {
+    nfcResuming.value = false
     nfcConnecting.value = false
   }
 }
 
 async function onNfcPadClick() {
-  if (nfcConnected.value) return
+  if (nfcConnecting.value || nfcResuming.value || barcodeScanning.value) return
+  // UI "đã kết nối" có thể là session chết sau barcode → bấm lại = force restart
+  if (nfcConnected.value || nfcSessionActive.value) {
+    await connectNfc({ force: true })
+    return
+  }
   await connectNfc()
 }
 
@@ -1398,9 +1483,33 @@ onUnmounted(() => {
   margin-bottom: 0.65rem;
 }
 
-.scanned-count {
+.scanned-count-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.scanned-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-size: 0.85rem;
   color: var(--vip-accent-green);
+
+  i {
+    font-size: 0.9rem;
+  }
+
+  strong {
+    font-weight: 700;
+  }
+}
+
+.scanned-stat-separator {
+  font-size: 0.7rem;
+  color: var(--vip-muted);
+  font-weight: 900;
 }
 
 .scanned-list {

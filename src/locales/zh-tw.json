@@ -110,6 +110,8 @@
       "needQrToken": "尚未登入。請先掃描車輛 QR Code（步驟 1）以取得新 token。",
       "allDone": "已完成全部員工點名",
       "boarded": "已上車",
+      "boardedCount": "已上車",
+      "registeredCount": "已報名",
       "plateLabel": "車牌號碼",
       "recent": "已點名",
       "emptyList": "尚無人點名",

@@ -4,6 +4,8 @@ export interface DriverLoginData {
     numberPlate: string
     accessToken: string
     expiresAt: string
+    numOfSeat?: number | null
+    registeredCount?: number | null
 }
 
 export interface DriverLoginResponse {
@@ -15,6 +17,8 @@ export interface DriverLoginResponse {
 
 export interface DriverPlateItem {
     numberPlate: string
+    numOfSeat?: number | null
+    registeredCount?: number | null
 }
 
 export interface DriverPlateListResponse {
