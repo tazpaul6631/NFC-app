@@ -82,7 +82,7 @@
                 <div class="nfc-status-side">
                   <div class="scan-action-cluster">
                     <Tag :value="nfcStatusText" :severity="nfcStatusSeverity" class="nfc-status-tag" />
-                    <button type="button" class="nfc-pad" :class="nfcUiState" :disabled="nfcConnecting"
+                    <button type="button" class="nfc-pad" :class="nfcUiState" :disabled="barcodeScanning"
                       :aria-label="nfcStatusText" @click="onNfcPadClick">
                       <i :class="nfcPadIcon" />
                     </button>
@@ -489,7 +489,12 @@ async function onBarcodeScanClick() {
       nfcConnecting.value = true
       try {
         await waitUntilAppActive()
-        const ok = await restartNfcScan({ delayMs: 1200, retries: 2, force: true })
+        const ok = await restartNfcScan({
+          delayMs: 1200,
+          retries: 2,
+          force: true,
+          doubleStart: true,
+        })
         if (ok) {
           nfcSessionActive.value = true
         } else {
@@ -506,6 +511,7 @@ async function onBarcodeScanClick() {
     }
     barcodeScanning.value = false
     nfcResuming.value = false
+    await drainNfcRestartQueue()
   }
 }
 
@@ -732,6 +738,8 @@ const nfcConnecting = ref(false)
 const nfcSessionActive = ref(false)
 /** Đang pause NFC vì barcode / đang restart — bỏ toast + bỏ xử lý SESSION_ENDED sớm */
 const nfcResuming = ref(false)
+/** Bấm pad lúc đang reconnect → chạy force restart khi xong */
+const nfcRestartQueued = ref(false)
 
 const {
   isConnected: nfcConnected,
@@ -775,16 +783,24 @@ const {
   },
 })
 
+async function drainNfcRestartQueue() {
+  if (!nfcRestartQueued.value) return
+  nfcRestartQueued.value = false
+  if (activeStep.value !== '2' || barcodeScanning.value) return
+  await connectNfc({ force: true })
+}
+
 async function resumeNfcAfterInterrupt() {
   if (nfcResuming.value || barcodeScanning.value || activeStep.value !== '2') return
   nfcResuming.value = true
   nfcConnecting.value = true
   try {
-    const ok = await restartNfcScan({ delayMs: 1200, retries: 2, force: true })
+    const ok = await restartNfcScan({ delayMs: 1200, retries: 2, force: true, doubleStart: true })
     if (ok) nfcSessionActive.value = true
   } finally {
     nfcConnecting.value = false
     nfcResuming.value = false
+    await drainNfcRestartQueue()
   }
 }
 
@@ -875,7 +891,12 @@ async function connectNfc(options?: { silent?: boolean; force?: boolean }) {
 
     if (force || nfcConnected.value) {
       nfcResuming.value = true
-      const ok = await restartNfcScan({ delayMs: 1200, retries: 2, force: true })
+      const ok = await restartNfcScan({
+        delayMs: 1200,
+        retries: 2,
+        force: true,
+        doubleStart: true,
+      })
       if (ok) {
         nfcSessionActive.value = true
         if (!silent) {
@@ -931,11 +952,17 @@ async function connectNfc(options?: { silent?: boolean; force?: boolean }) {
   } finally {
     nfcResuming.value = false
     nfcConnecting.value = false
+    await drainNfcRestartQueue()
   }
 }
 
 async function onNfcPadClick() {
-  if (nfcConnecting.value || nfcResuming.value || barcodeScanning.value) return
+  if (barcodeScanning.value) return
+  // Đang reconnect: không bỏ tap — xếp hàng force restart khi xong
+  if (nfcConnecting.value || nfcResuming.value) {
+    nfcRestartQueued.value = true
+    return
+  }
   // UI "đã kết nối" có thể là session chết sau barcode → bấm lại = force restart
   if (nfcConnected.value || nfcSessionActive.value) {
     await connectNfc({ force: true })
@@ -952,6 +979,7 @@ watch(activeStep, async (step, prev) => {
     selectedPlate.value = null
     nfcSessionActive.value = false
     nfcResuming.value = false
+    nfcRestartQueued.value = false
     await stopNfcScan()
   }
 })

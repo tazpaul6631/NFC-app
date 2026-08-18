@@ -108,6 +108,7 @@ export function useNfcScan(options?: {
   let suppressSessionEnd = false
   let suppressSessionEndTimer: ReturnType<typeof setTimeout> | undefined
   let restarting = false
+  let pendingForceRestart = false
 
   const canScan = computed(() => isNative && isSupported.value && nfcStatus.value === 'NFC_OK')
   const isConnected = computed(
@@ -251,9 +252,6 @@ export function useNfcScan(options?: {
 
   async function startScan() {
     errorMessage.value = null
-    await refreshStatus()
-
-    if (isScanning.value) return
 
     // Web/dev: chỉ mock khi caller cho phép (vd. màn check-in)
     if (!isNative) {
@@ -266,6 +264,12 @@ export function useNfcScan(options?: {
       errorMessage.value = 'NFC_WEB_ONLY'
       return
     }
+
+    // Luôn dọn ReaderMode cũ — sau camera startScanning có thể "OK" nhưng session chết
+    beginSuppressSessionEnd()
+    await stopScan()
+    await refreshStatus()
+    endSuppressSessionEnd(400)
 
     if (!isSupported.value || nfcStatus.value === 'NO_NFC') {
       errorMessage.value = 'NFC_UNSUPPORTED'
@@ -342,17 +346,21 @@ export function useNfcScan(options?: {
     delayMs?: number
     retries?: number
     force?: boolean
+    /** Sau camera: stop→start thêm 1 vòng (Android reader hay zombie) */
+    doubleStart?: boolean
   }): Promise<boolean> {
     const delayMs = optionsRestart?.delayMs ?? DEFAULT_RESTART_DELAY_MS
     const retries = optionsRestart?.retries ?? DEFAULT_RESTART_RETRIES
 
     if (restarting) {
       if (!optionsRestart?.force) return isScanning.value
+      pendingForceRestart = true
       const waitStart = Date.now()
-      while (restarting && Date.now() - waitStart < 4000) {
+      while (restarting && Date.now() - waitStart < 8000) {
         await sleep(100)
       }
       if (restarting) return isScanning.value
+      pendingForceRestart = false
     }
 
     restarting = true
@@ -363,6 +371,12 @@ export function useNfcScan(options?: {
         await sleep(delayMs)
         try {
           await startScan()
+          if (isScanning.value && optionsRestart?.doubleStart) {
+            await sleep(350)
+            await stopScan()
+            await sleep(350)
+            await startScan()
+          }
           if (isScanning.value) return true
         } catch {
           // thử lại
@@ -372,6 +386,10 @@ export function useNfcScan(options?: {
     } finally {
       restarting = false
       endSuppressSessionEnd()
+      if (pendingForceRestart) {
+        pendingForceRestart = false
+        void restartScan({ ...optionsRestart, force: true })
+      }
     }
   }
 
