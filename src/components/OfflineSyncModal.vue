@@ -1,6 +1,6 @@
 <template>
   <Dialog :visible="visible" modal :header="t('checkin.sync.title')" :style="{ width: 'min(440px, 94vw)' }"
-    :draggable="false" :closable="true" @update:visible="onVisibleUpdate">
+    :draggable="false" :closable="false" @update:visible="onVisibleUpdate">
     <div class="list-modal-body">
       <p v-if="offlinePendingCount" class="sync-subtitle">
         {{
@@ -50,13 +50,6 @@
             </div>
           </div>
         </div>
-
-        <p v-if="!offlinePendingEmployees.length" class="empty-hint">
-          {{ t('checkin.sync.empty') }}
-        </p>
-        <p v-else-if="!groupedOfflinePending.length" class="empty-hint">
-          {{ t('checkin.nfc.filterEmpty') }}
-        </p>
       </div>
     </div>
 

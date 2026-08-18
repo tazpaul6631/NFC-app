@@ -95,6 +95,14 @@
                       <i :class="barcodeScanning ? 'pi pi-spin pi-spinner' : 'pi pi-barcode'" />
                     </button>
                   </div>
+
+                  <div class="scan-action-cluster">
+                    <Tag :value="t('checkin.nfc.manual')" severity="info" class="nfc-status-tag" />
+                    <button type="button" class="nfc-pad manual-pad" :aria-label="t('checkin.nfc.manual')"
+                      @click="manualModalVisible = true">
+                      <i class="pi pi-pencil" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -158,6 +166,19 @@
     </Stepper>
 
     <OfflineSyncModal v-model="syncModalVisible" />
+
+    <Dialog v-model:visible="manualModalVisible" :header="t('checkin.nfc.manual')" modal
+      :style="{ width: '90vw', maxWidth: '360px' }" :closable="false">
+      <div class="flex flex-column gap-3">
+        <InputText v-model="manualEmployeeId" :placeholder="t('checkin.nfc.manualPlaceholder')" class="w-full"
+          @input="manualEmployeeId = manualEmployeeId.toUpperCase()" />
+      </div>
+      <template #footer>
+        <Button :label="t('common.cancel')" severity="secondary" size="large" @click="closeManualModal" />
+        <Button :label="t('checkin.nfc.submit')" :disabled="!manualEmployeeId.trim()" :loading="manualSubmitting"
+          @click="onManualSubmit" size="large" />
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -169,6 +190,7 @@ import { useToast } from 'primevue/usetoast'
 import Stepper from 'primevue/stepper'
 import StepPanels from 'primevue/steppanels'
 import StepPanel from 'primevue/steppanel'
+import Dialog from 'primevue/dialog'
 import LottieLoader from '@/components/LottieLoader.vue'
 import OfflineSyncModal from '@/components/OfflineSyncModal.vue'
 import { useQrScan } from '@/composables/useQrScan'
@@ -228,6 +250,28 @@ const completedSteps = reactive(new Set<'1' | '2'>())
 const transitioning = ref(false)
 const loadingMessage = ref('')
 const syncModalVisible = ref(false)
+const manualModalVisible = ref(false)
+const manualEmployeeId = ref('')
+const manualSubmitting = ref(false)
+
+function closeManualModal() {
+  manualModalVisible.value = false
+  manualEmployeeId.value = ''
+}
+
+async function onManualSubmit() {
+  const code = manualEmployeeId.value.trim()
+  if (!code) return
+  manualSubmitting.value = true
+  try {
+    const ok = await checkInByEmployeeId(code)
+    if (ok) {
+      closeManualModal()
+    }
+  } finally {
+    manualSubmitting.value = false
+  }
+}
 
 function showLoader(message: string) {
   loadingMessage.value = message
@@ -1298,7 +1342,7 @@ onUnmounted(() => {
 
 .nfc-status-side {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 0.75rem;
   width: 100%;
   min-width: 0;
@@ -1406,6 +1450,15 @@ onUnmounted(() => {
   &.barcode-pad {
     animation: nfc-pad-ready 2s ease-in-out infinite;
   }
+
+  &.manual-pad i {
+    background: #107bb9;
+    box-shadow: 0 4px 12px rgba(16, 123, 185, 0.45);
+  }
+
+  &.manual-pad {
+    animation: nfc-pad-manual 2s ease-in-out infinite;
+  }
 }
 
 @keyframes nfc-pad-breathe {
@@ -1475,6 +1528,20 @@ onUnmounted(() => {
   50% {
     transform: scale(1.04);
     box-shadow: 0 0 0 8px rgba(245, 158, 11, 0), var(--vip-shadow-primary);
+  }
+}
+
+@keyframes nfc-pad-manual {
+
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(16, 123, 185, 0.3), var(--vip-shadow-primary);
+  }
+
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 10px rgba(16, 123, 185, 0), var(--vip-shadow-primary);
   }
 }
 
