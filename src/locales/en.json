@@ -132,8 +132,8 @@
       "toastReconnect": "NFC connection lost. Tap the button to reconnect.",
       "status": {
         "idle": "NFC",
-        "connecting": "Connecting…",
-        "connected": "Connected",
+        "connecting": "NFC",
+        "connected": "NFC",
         "disabled": "NFC",
         "unsupported": "Unsupported",
         "done": "Done"

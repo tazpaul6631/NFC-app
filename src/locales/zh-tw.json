@@ -132,8 +132,8 @@
       "toastReconnect": "NFC 連線中斷，請點按按鈕重新連接。",
       "status": {
         "idle": "NFC",
-        "connecting": "連接中…",
-        "connected": "已連接",
+        "connecting": "NFC",
+        "connected": "NFC",
         "disabled": "NFC",
         "unsupported": "不支援",
         "done": "完成"

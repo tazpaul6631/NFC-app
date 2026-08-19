@@ -132,8 +132,8 @@
       "toastReconnect": "NFC đã mất kết nối. Nhấn nút để kết nối lại.",
       "status": {
         "idle": "NFC",
-        "connecting": "Đang kết nối…",
-        "connected": "Đã kết nối",
+        "connecting": "NFC",
+        "connected": "NFC",
         "disabled": "NFC",
         "unsupported": "Không hỗ trợ",
         "done": "Hoàn tất"
