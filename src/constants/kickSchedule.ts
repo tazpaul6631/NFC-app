@@ -33,11 +33,26 @@ export function getVNMinutesNow(date = new Date()): number {
   return (utcMinutes + 7 * 60) % (24 * 60)
 }
 
+/** Ngày VN dạng `YYYY-MM-DD` (UTC+7 wall-clock) */
+export function getVNDateKey(date = new Date()): string {
+  const shifted = new Date(date.getTime() + 7 * 60 * 60 * 1000)
+  const y = shifted.getUTCFullYear()
+  const m = String(shifted.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(shifted.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 /** Phút trong ngày từ chuỗi local `YYYY-MM-DDTHH:mm:ss` (giờ VN wall-clock) */
 export function getVNMinutesFromLocalIso(iso: string): number | null {
   const match = iso.match(/T(\d{2}):(\d{2})/)
   if (!match) return null
   return Number(match[1]) * 60 + Number(match[2])
+}
+
+/** Ngày từ chuỗi local `YYYY-MM-DDTHH:mm:ss` */
+export function getDateKeyFromLocalIso(iso: string): string | null {
+  const match = iso.match(/^(\d{4}-\d{2}-\d{2})/)
+  return match ? match[1] : null
 }
 
 const KICK_MINUTES = toMinutesList(KICK_TIMES)
@@ -49,12 +64,24 @@ export function getLatestPassedKickMinute(date = new Date()): number | null {
   return passed.length ? Math.max(...passed) : null
 }
 
-/** Ca hiện tại bắt đầu trước mốc đá gần nhất → cần reset (catch-up) */
+/**
+ * Ca hiện tại cần reset (catch-up):
+ * - Timestamp display thuộc ngày VN trước hôm nay → stale (qua đêm / bỏ lỡ kick)
+ * - Cùng ngày và bắt đầu trước mốc đá gần nhất đã qua → stale
+ */
 export function isDisplayStaleForKick(
   tripStartedAt: string | null,
   employeeCheckinAts: string[],
   date = new Date(),
 ): boolean {
+  const todayKey = getVNDateKey(date)
+  const allIsos = [...(tripStartedAt ? [tripStartedAt] : []), ...employeeCheckinAts]
+
+  for (const iso of allIsos) {
+    const dateKey = getDateKeyFromLocalIso(iso)
+    if (dateKey && dateKey < todayKey) return true
+  }
+
   const latestKick = getLatestPassedKickMinute(date)
   if (latestKick === null) return false
 
