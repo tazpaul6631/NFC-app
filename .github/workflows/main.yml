@@ -58,8 +58,8 @@ jobs:
           mkdir -p android/keystore
           echo "$KEYSTORE_BASE64" | base64 -d > android/keystore/checkin-bus-release.jks
 
-      # Build AAB (định dạng bắt buộc cho Play Store), ký trực tiếp bằng Gradle
-      - name: Build Android App Bundle (Release)
+      # APK (cài tay) + AAB (Play Store), cùng keystore
+      - name: Build Android APK and App Bundle (Release)
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -67,11 +67,18 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleRelease \
+          ./gradlew assembleRelease bundleRelease \
             -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/android/keystore/checkin-bus-release.jks \
             -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
             -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
             -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkin-bus-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 7
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
