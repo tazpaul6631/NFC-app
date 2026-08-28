@@ -45,7 +45,10 @@
               <small>Card: {{ emp.cardNumber ? emp.cardNumber : '...' }}</small>
             </div>
             <div class="employee-status">
-              <span class="employee-time">{{ emp.checkinTime }}</span>
+              <span class="employee-time">
+                <span class="recent-time-date">{{ checkinStamp(emp).date }}</span>
+                <span class="recent-time-clock">{{ checkinStamp(emp).time }}</span>
+              </span>
               <span class="status-badge pending">{{ t('checkin.sync.pendingTag') }}</span>
             </div>
           </div>
@@ -67,7 +70,7 @@ import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import type { CheckedInEmployee } from '@/store/checkinList'
-import { useCheckinListStore } from '@/store/checkinList'
+import { formatCheckinDisplay, useCheckinListStore } from '@/store/checkinList'
 import { useAuthStore } from '@/store/auth'
 import { isOfflineSyncing, syncOfflineQueue } from '@/services/offlineSyncService'
 
@@ -127,6 +130,10 @@ function matchesEmployeeFilter(
   )
 }
 
+function checkinStamp(emp: { checkinAt: string; checkinTime: string }) {
+  return formatCheckinDisplay(emp.checkinAt, emp.checkinTime)
+}
+
 const filteredOfflinePendingEmployees = computed(() =>
   offlinePendingEmployees.value.filter((emp) =>
     matchesEmployeeFilter(emp, filterOfflineEmployee.value),
@@ -160,7 +167,7 @@ async function onSync() {
   if (syncing.value || isOfflineSyncing()) return
   syncing.value = true
   try {
-    const ok = await syncOfflineQueue({ silent: false })
+    const ok = await syncOfflineQueue({ silent: false, retryFailed: true })
     if (ok && !offlinePendingCount.value) {
       onVisibleUpdate(false)
     }
@@ -292,9 +299,23 @@ async function onSync() {
 }
 
 .employee-time {
-  font-size: 0.78rem;
-  color: var(--vip-accent-green);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.05rem;
+  line-height: 1.2;
   font-weight: 600;
+  color: var(--vip-accent-green);
+}
+
+.recent-time-date {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--vip-muted);
+}
+
+.recent-time-clock {
+  font-size: 0.78rem;
 }
 
 .status-badge.pending {

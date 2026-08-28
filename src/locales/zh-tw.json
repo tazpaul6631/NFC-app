@@ -13,7 +13,7 @@
     "online": "線上",
     "offline": "離線",
     "offlineBanner": "目前為離線模式。系統仍可正常使用，待恢復網路後將自動傳送資料。",
-    "sessionExpired": "登入已過期，請重新登入。",
+    "sessionExpired": "登入已過期。仍可點名；請重新掃描 QR 以同步。",
     "serverMaintenance": "伺服器維護中或發生錯誤。請聯繫 IT 並稍後再試。",
     "search": "搜尋..."
   },
@@ -107,7 +107,8 @@
       "title": "NFC 點名",
       "subtitle": "請員工將員工卡感應在手機的 NFC 感應區以記錄上車。",
       "needScan": "請先掃描車輛 QR Code 後再進行點名",
-      "needQrToken": "尚未登入。請先掃描車輛 QR Code（步驟 1）以取得新 token。",
+      "needQrToken": "尚未登入。仍可點名；有空時請掃描車輛 QR（步驟 1）以同步。",
+      "tokenExpiredBanner": "Token 已過期 — 仍可掃描。請重新掃描車輛 QR（步驟 1）以上傳資料。",
       "allDone": "已完成全部員工點名",
       "boarded": "已上車",
       "boardedCount": "已上車",
@@ -185,6 +186,7 @@
     "CREATE_SUCCESS": "建立成功",
     "CARD_NOT_FOUND": "找不到員工卡",
     "EMPLOYEE_NOT_FOUND": "找不到員工",
-    "CHECK_IN_NOT_AVAILABLE": "點名不可用"
+    "CHECK_IN_NOT_AVAILABLE": "點名不可用",
+    "ALREADY_CHECKED_IN": "您已經點名過了"
   }
 }

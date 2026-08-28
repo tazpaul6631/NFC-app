@@ -18,6 +18,8 @@ export interface EmployeeCheckInSyncItem {
     cardNumber: string
     employeeId: string
     checkInTime: string
+    /** Uuid local — chỉ gửi khi SEND_CHECKIN_IDEMPOTENCY_KEY = true */
+    clientRequestId?: string
 }
 
 /** Request: đồng bộ danh sách điểm danh offline */

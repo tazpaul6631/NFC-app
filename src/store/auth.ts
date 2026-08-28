@@ -186,21 +186,14 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * 401 / session hết hạn — giống kick về display:
-     * xóa token + về step 1 + resetDisplayList.
-     * Giữ offlineQueue / cachedVehicles để sync sau khi login lại.
+     * 401 / session hết hạn: chỉ xóa token.
+     * Giữ display list, step, offlineQueue, cache biển — vẫn quét được; sync khi QR lại.
      */
     async clearSession() {
       this.token = ''
       this.expiresAt = null
-      this.activeNumOfSeat = null
-      this.activeRegisteredCount = null
       await Preferences.remove({ key: 'vip_token' })
       await storageService.remove('vip_token')
-      const checkinList = await getCheckinListStore()
-      checkinList.resetDisplayList()
-      const { useCheckinStepStore } = await import('@/store/checkinStep')
-      useCheckinStepStore().reset()
     },
 
     async logout() {

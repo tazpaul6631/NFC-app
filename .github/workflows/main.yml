@@ -49,41 +49,45 @@ jobs:
       - name: Sync with Capacitor
         run: npx cap sync android
 
-      - name: Build Android APK (Release)
+      # Giải mã keystore cố định từ secret (KHÔNG tạo mới mỗi lần build,
+      # nếu không app sẽ không thể update trên Play Store)
+      - name: Decode signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p android/keystore
+          echo "$KEYSTORE_BASE64" | base64 -d > android/keystore/checkin-bus-release.jks
+
+      # Build AAB (định dạng bắt buộc cho Play Store), ký trực tiếp bằng Gradle
+      - name: Build Android App Bundle (Release)
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/android/keystore/checkin-bus-release.jks \
+            -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"
 
-      # CI-only keystore (mỗi lần build tạo mới). Production: dùng secrets + keystore cố định.
-      - name: Generate keystore and sign APK
-        env:
-          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          cd android/app/build/outputs/apk/release
-          STORE_PASS="${KEYSTORE_PASS:-12345678}"
-          KEY_PASS_VAL="${KEY_PASS:-12345678}"
-
-          keytool -genkey -v -keystore checkin-bus-ci.jks -keyalg RSA -keysize 2048 -validity 10000 \
-            -alias checkin_bus -storepass "$STORE_PASS" -keypass "$KEY_PASS_VAL" \
-            -dname "CN=JiaHsin, OU=IT, O=JiaHsin, L=HCM, ST=HCM, C=VN"
-
-          zipalign -v -p 4 app-release-unsigned.apk app-release-aligned.apk
-
-          apksigner sign \
-            --ks checkin-bus-ci.jks \
-            --ks-pass "pass:$STORE_PASS" \
-            --ks-key-alias checkin_bus \
-            --key-pass "pass:$KEY_PASS_VAL" \
-            --out checkin-bus-release.apk \
-            app-release-aligned.apk
-
-          apksigner verify --verbose checkin-bus-release.apk
-
-      - name: Upload APK Artifact
+      - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: checkin-bus
-          path: android/app/build/outputs/apk/release/checkin-bus-release.apk
+          name: checkin-bus-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 7
+
+      # Tự động đẩy lên Google Play (kênh Internal testing).
+      # LƯU Ý: chỉ hoạt động sau khi đã nộp bản đầu tiên THỦ CÔNG qua web
+      # (Google Play Developer API không cho tạo release đầu tiên của app).
+      - name: Upload to Google Play (Internal testing)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_CONFIG_JSON }}
+          packageName: com.jiahsin.bus
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed

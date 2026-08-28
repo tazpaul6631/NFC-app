@@ -35,11 +35,19 @@ export function getVNMinutesNow(date = new Date()): number {
 
 /** Ngày VN dạng `YYYY-MM-DD` (UTC+7 wall-clock) */
 export function getVNDateKey(date = new Date()): string {
+  return formatVNWallClock(date).slice(0, 10)
+}
+
+/** `YYYY-MM-DDTHH:mm:ss` theo giờ VN (UTC+7), không gắn `Z` */
+export function formatVNWallClock(date = new Date()): string {
   const shifted = new Date(date.getTime() + 7 * 60 * 60 * 1000)
   const y = shifted.getUTCFullYear()
   const m = String(shifted.getUTCMonth() + 1).padStart(2, '0')
   const d = String(shifted.getUTCDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+  const hh = String(shifted.getUTCHours()).padStart(2, '0')
+  const mm = String(shifted.getUTCMinutes()).padStart(2, '0')
+  const ss = String(shifted.getUTCSeconds()).padStart(2, '0')
+  return `${y}-${m}-${d}T${hh}:${mm}:${ss}`
 }
 
 /** Phút trong ngày từ chuỗi local `YYYY-MM-DDTHH:mm:ss` (giờ VN wall-clock) */
@@ -62,6 +70,23 @@ export function getLatestPassedKickMinute(date = new Date()): number | null {
   const current = getVNMinutesNow(date)
   const passed = KICK_MINUTES.filter((m) => m <= current)
   return passed.length ? Math.max(...passed) : null
+}
+
+/**
+ * Record còn trong cửa sổ ca hiện tại (cùng ngày VN và ≥ mốc đá gần nhất đã qua).
+ * Dùng cho FE dedupe — bỏ qua data sót ca/ngày trước nếu chưa kịp kick-reset.
+ */
+export function isCheckinAtInCurrentKickWindow(iso: string, date = new Date()): boolean {
+  const todayKey = getVNDateKey(date)
+  const dateKey = getDateKeyFromLocalIso(iso)
+  if (dateKey && dateKey < todayKey) return false
+
+  const minutes = getVNMinutesFromLocalIso(iso)
+  if (minutes === null) return Boolean(dateKey)
+
+  const latestKick = getLatestPassedKickMinute(date)
+  if (latestKick === null) return true
+  return minutes >= latestKick
 }
 
 /**

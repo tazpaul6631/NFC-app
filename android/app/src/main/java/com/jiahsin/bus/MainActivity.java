@@ -1,4 +1,4 @@
-package com.jiahsin.vip;
+package com.jiahsin.bus;
 
 import android.os.Bundle;
 

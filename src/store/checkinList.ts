@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia'
 import dayjs from 'dayjs'
 import type { EmployeeCheckInResult } from '@/api/employeeCheckIn'
+import { formatVNWallClock, isCheckinAtInCurrentKickWindow } from '@/constants/kickSchedule'
+import { CHECKIN_SYNC_MAX_RETRIES, CHECKIN_SYNCING_STALE_MS } from '@/constants/checkinSync'
+import { isCheckinUuid, newCheckinUuid } from '@/utils/checkinUuid'
+
+export type CheckinSyncStatus = 'pending' | 'syncing' | 'synced' | 'failed'
 
 export interface CheckedInEmployee {
   id: string
@@ -12,9 +17,16 @@ export interface CheckedInEmployee {
   checkinAt: string
   initials: string
   color: string
+  /** UI: chưa lên server (pending / syncing / failed) */
   pendingSync: boolean
+  status: CheckinSyncStatus
+  retryCount: number
+  /** Epoch ms lúc chuyển syncing — dùng recover khi app bị kill */
+  syncingAt: number | null
   numberPlate: string
 }
+
+const SYNC_STATUSES: CheckinSyncStatus[] = ['pending', 'syncing', 'synced', 'failed']
 
 const AVATAR_COLORS = [
   '#2563eb',
@@ -69,10 +81,128 @@ function plateMatches(empPlate: string, activePlate: string) {
   return (empPlate || '').trim() === a
 }
 
-/** Giờ local cho BE — không dùng UTC (`...Z`) */
+/** List boarding: ẩn 4xx failed (giữ trong queue để retry). */
+function isOnBoardingList(e: CheckedInEmployee, plate: string) {
+  return (
+    e.status !== 'failed' &&
+    plateMatches(e.numberPlate, plate) &&
+    isCheckinAtInCurrentKickWindow(e.checkinAt)
+  )
+}
+
+function matchesCheckInKey(e: CheckedInEmployee, key: string, plate: string) {
+  return (
+    plateMatches(e.numberPlate, plate) &&
+    isCheckinAtInCurrentKickWindow(e.checkinAt) &&
+    (e.employeeId === key || e.cardNumber === key || e.code === key)
+  )
+}
+
+function isBlockingCheckInStatus(status: CheckinSyncStatus) {
+  return status === 'pending' || status === 'syncing' || status === 'synced'
+}
+
+const NAIVE_VN_ISO = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/
+
+/** Giờ VN wall-clock cho list/kick/BE — không dùng UTC (`...Z`) */
 export function toLocalCheckInTime(value?: string | Date | null) {
-  const d = value ? dayjs(value) : dayjs()
-  return (d.isValid() ? d : dayjs()).format('YYYY-MM-DDTHH:mm:ss')
+  if (value instanceof Date) {
+    return formatVNWallClock(Number.isNaN(value.getTime()) ? new Date() : value)
+  }
+  const raw = String(value || '').trim()
+  if (!raw) return formatVNWallClock()
+  const naive = raw.match(NAIVE_VN_ISO)
+  if (naive && !/[zZ]|[+-]\d{2}:\d{2}$/.test(raw)) return naive[1]
+  const d = dayjs(raw)
+  return formatVNWallClock(d.isValid() ? d.toDate() : new Date())
+}
+
+/** Ngày + giờ hiển thị — lấy đúng chữ số wall-clock đã lưu (không lệch TZ máy). */
+export function formatCheckinDisplay(checkinAt?: string | null, fallbackTime?: string) {
+  if (!checkinAt) {
+    return { date: '', time: fallbackTime || '' }
+  }
+  const stamp = toLocalCheckInTime(checkinAt)
+  const match = stamp.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/)
+  if (match) {
+    return {
+      date: `${match[3]}/${match[2]}/${match[1]}`,
+      time: `${match[4]}:${match[5]}:${match[6]}`,
+    }
+  }
+  return {
+    date: '',
+    time: fallbackTime || '',
+  }
+}
+
+function pendingSyncFromStatus(status: CheckinSyncStatus) {
+  return status === 'pending' || status === 'syncing' || status === 'failed'
+}
+
+function parseStatus(value: unknown, pendingSync?: boolean): CheckinSyncStatus {
+  if (typeof value === 'string' && SYNC_STATUSES.includes(value as CheckinSyncStatus)) {
+    return value as CheckinSyncStatus
+  }
+  return pendingSync ? 'pending' : 'synced'
+}
+
+function normalizeEmployee(
+  raw: Partial<CheckedInEmployee> & { id?: string; pendingSync?: boolean },
+  index: number,
+  idMap: Map<string, string>,
+  queueFallbackPending = false,
+): CheckedInEmployee {
+  const oldId = String(raw.id || '')
+  let id = oldId
+  if (!isCheckinUuid(id)) {
+    const mapped = idMap.get(oldId)
+    if (mapped) {
+      id = mapped
+    } else {
+      id = newCheckinUuid()
+      if (oldId) idMap.set(oldId, id)
+    }
+  }
+
+  const status = parseStatus(
+    raw.status,
+    raw.pendingSync === true || (raw.pendingSync == null && queueFallbackPending),
+  )
+  const retryCount = typeof raw.retryCount === 'number' && raw.retryCount >= 0 ? raw.retryCount : 0
+  const syncingAt = typeof raw.syncingAt === 'number' ? raw.syncingAt : null
+  const checkinAt = raw.checkinAt || toLocalCheckInTime()
+
+  return {
+    id,
+    employeeId: raw.employeeId || '',
+    name: raw.name || '',
+    code: raw.code || raw.employeeId || '',
+    cardNumber: raw.cardNumber || '',
+    checkinTime: raw.checkinTime || formatCheckinDisplay(checkinAt).time,
+    checkinAt,
+    initials: raw.initials || getInitials(raw.name || raw.employeeId || raw.cardNumber || ''),
+    color: raw.color || AVATAR_COLORS[index % AVATAR_COLORS.length],
+    status,
+    retryCount,
+    syncingAt,
+    pendingSync: pendingSyncFromStatus(status),
+    numberPlate: (raw.numberPlate || '').trim(),
+  }
+}
+
+function recoverIfStaleSyncing(emp: CheckedInEmployee, now = Date.now()): CheckedInEmployee {
+  if (emp.status !== 'syncing') return emp
+  const started = emp.syncingAt ?? 0
+  if (!started || now - started > CHECKIN_SYNCING_STALE_MS) {
+    return {
+      ...emp,
+      status: 'pending',
+      syncingAt: null,
+      pendingSync: true,
+    }
+  }
+  return emp
 }
 
 function buildEmployee(
@@ -82,17 +212,21 @@ function buildEmployee(
   index: number,
 ): CheckedInEmployee {
   const checkinAt = toLocalCheckInTime(result.checkInTime)
+  const status: CheckinSyncStatus = pendingSync ? 'pending' : 'synced'
   return {
-    id: `${result.employeeId || result.cardNumber}-${checkinAt}-${index}`,
+    id: newCheckinUuid(),
     employeeId: result.employeeId,
     name: result.employeeName,
     code: result.employeeId,
     cardNumber: result.cardNumber,
-    checkinTime: dayjs(checkinAt).format('HH:mm:ss'),
+    checkinTime: formatCheckinDisplay(checkinAt).time,
     checkinAt,
     initials: getInitials(result.employeeName || result.employeeId || result.cardNumber),
     color: AVATAR_COLORS[index % AVATAR_COLORS.length],
     pendingSync,
+    status,
+    retryCount: 0,
+    syncingAt: null,
     numberPlate: numberPlate.trim(),
   }
 }
@@ -117,31 +251,31 @@ export const useCheckinListStore = defineStore('checkinList', {
   getters: {
     checkedInCount(state) {
       const plate = state.activeDisplayPlate
-      return state.employees.filter((e) => plateMatches(e.numberPlate, plate)).length
+      return state.employees.filter((e) => isOnBoardingList(e, plate)).length
     },
 
     scannedEmployees(state) {
       const plate = state.activeDisplayPlate
-      return state.employees
-        .filter((e) => plateMatches(e.numberPlate, plate))
-        .slice()
-        .sort(sortByNewest)
+      return state.employees.filter((e) => isOnBoardingList(e, plate)).slice().sort(sortByNewest)
     },
 
     offlinePendingEmployees: (state) => [...state.offlineQueue].sort(sortByNewest),
 
     offlinePendingCount: (state) => state.offlineQueue.length,
 
+    /** Record sẵn sàng gửi (không gồm syncing đang lock / failed đã trần). */
+    offlineReadyToSync(state) {
+      return state.offlineQueue.filter((e) => e.status === 'pending')
+    },
+
     isAlreadyCheckedIn(state) {
       return (code: string, plate?: string) => {
         const key = code.trim()
         if (!key) return false
         const p = (plate ?? state.activeDisplayPlate).trim()
-        return state.employees.some(
-          (e) =>
-            plateMatches(e.numberPlate, p) &&
-            (e.employeeId === key || e.cardNumber === key || e.code === key),
-        )
+        const matches = (e: CheckedInEmployee) =>
+          isBlockingCheckInStatus(e.status) && matchesCheckInKey(e, key, p)
+        return state.employees.some(matches) || state.offlineQueue.some(matches)
       }
     },
   },
@@ -168,6 +302,46 @@ export const useCheckinListStore = defineStore('checkinList', {
       if (pendingSync) {
         this.offlineQueue.unshift({ ...emp })
       }
+      return emp
+    },
+
+    /**
+     * Source of truth: luôn ghi local pending trước khi gọi API.
+     * Trùng ca (pending/syncing/synced) → null.
+     * Cùng mã đã failed → đưa lại pending (cùng uuid), không tạo record mới.
+     */
+    enqueueCheckIn(
+      result: EmployeeCheckInResult,
+      numberPlate = '',
+    ): CheckedInEmployee | null {
+      const plate = numberPlate.trim() || this.activeDisplayPlate
+      const key = (result.employeeId || result.cardNumber || '').trim()
+      if (key && this.isAlreadyCheckedIn(key, plate)) return null
+      if (key) {
+        const revived = this.requeueFailedMatch(key, plate)
+        if (revived) return revived
+      }
+      return this.addEmployee(result, true, plate)
+    },
+
+    requeueFailedMatch(key: string, plate: string): CheckedInEmployee | null {
+      const inQueue = this.offlineQueue.find(
+        (e) => e.status === 'failed' && matchesCheckInKey(e, key, plate),
+      )
+      if (!inQueue) return null
+      const revive = (emp: CheckedInEmployee) => {
+        if (emp.id !== inQueue.id) return
+        emp.status = 'pending'
+        emp.retryCount = 0
+        emp.syncingAt = null
+        emp.pendingSync = true
+      }
+      this.offlineQueue.forEach(revive)
+      this.employees.forEach(revive)
+      if (!this.employees.some((e) => e.id === inQueue.id)) {
+        this.employees.unshift({ ...inQueue, status: 'pending', retryCount: 0, syncingAt: null, pendingSync: true })
+      }
+      return this.offlineQueue.find((e) => e.id === inQueue.id) || inQueue
     },
 
     /**
@@ -199,66 +373,113 @@ export const useCheckinListStore = defineStore('checkinList', {
     },
 
     /**
-     * Sau sync thành công:
-     * - Merge tên/mã từ results vào display + queue nếu còn
-     * - Chỉ xóa khỏi offlineQueue các bản ghi đã gửi (syncedQueueIds)
-     * - Display giữ đến mốc đá; bỏ cờ pendingSync cho bản ghi đã sync
+     * Sau sync thành công: chỉ vá theo uuid (không tìm employeeId/card — tránh nhầm biển).
+     * Chỉ xóa khỏi offlineQueue các bản ghi trong syncedQueueIds.
      */
     applySyncResults(results?: EmployeeCheckInResult[] | null, syncedQueueIds?: string[]) {
-      if (Array.isArray(results) && results.length > 0) {
-        for (const result of results) {
-          const empId = (result.employeeId || '').trim()
-          const card = (result.cardNumber || '').trim()
-          const patch = (emp: CheckedInEmployee) => {
-            if (result.employeeName) {
-              emp.name = result.employeeName
-              emp.initials = getInitials(result.employeeName)
-            }
-            if (empId) {
-              emp.employeeId = empId
-              emp.code = empId
-            }
-            if (card) emp.cardNumber = card
-            if (result.checkInTime && dayjs(result.checkInTime).isValid()) {
-              emp.checkinAt = toLocalCheckInTime(result.checkInTime)
-              emp.checkinTime = dayjs(emp.checkinAt).format('HH:mm:ss')
-            }
-            emp.pendingSync = false
+      const ids = (syncedQueueIds || []).filter(Boolean)
+      if (!ids.length) return
+
+      const idSet = new Set(ids)
+      const result = Array.isArray(results) && results.length === 1 ? results[0] : null
+      const empId = (result?.employeeId || '').trim()
+      const card = (result?.cardNumber || '').trim()
+
+      const patchById = (emp: CheckedInEmployee) => {
+        if (!idSet.has(emp.id)) return
+        if (result) {
+          if (result.employeeName) {
+            emp.name = result.employeeName
+            emp.initials = getInitials(result.employeeName)
           }
-
-          const inDisplay = this.employees.find(
-            (e) =>
-              (empId && (e.employeeId === empId || e.code === empId)) ||
-              (card && e.cardNumber === card),
-          )
-          if (inDisplay) patch(inDisplay)
-
-          const inQueue = this.offlineQueue.find(
-            (e) =>
-              (empId && (e.employeeId === empId || e.code === empId)) ||
-              (card && e.cardNumber === card),
-          )
-          if (inQueue) patch(inQueue)
+          if (empId) {
+            emp.employeeId = empId
+            emp.code = empId
+          }
+          if (card) emp.cardNumber = card
+          if (result.checkInTime && dayjs(result.checkInTime).isValid()) {
+            emp.checkinAt = toLocalCheckInTime(result.checkInTime)
+            emp.checkinTime = formatCheckinDisplay(emp.checkinAt).time
+          }
         }
+        emp.pendingSync = false
+        emp.status = 'synced'
+        emp.syncingAt = null
       }
 
-      if (syncedQueueIds?.length) {
-        const idSet = new Set(syncedQueueIds)
-        this.offlineQueue = this.offlineQueue.filter((e) => !idSet.has(e.id))
-        this.employees.forEach((emp) => {
-          if (idSet.has(emp.id)) emp.pendingSync = false
-        })
-      } else {
-        // Fallback: batch sync không truyền id → xóa toàn bộ queue đã gửi
-        this.offlineQueue = []
-        this.employees.forEach((emp) => {
-          if (emp.pendingSync) emp.pendingSync = false
-        })
-      }
+      this.employees.forEach(patchById)
+      this.offlineQueue.forEach(patchById)
+      this.offlineQueue = this.offlineQueue.filter((e) => !idSet.has(e.id))
 
       if (this.offlineQueue.length === 0) {
         this.reminderModalVisible = false
       }
+    },
+
+    markQueueSyncing(ids: string[]) {
+      const idSet = new Set(ids)
+      const now = Date.now()
+      this.offlineQueue.forEach((emp) => {
+        if (!idSet.has(emp.id) || emp.status !== 'pending') return
+        emp.status = 'syncing'
+        emp.syncingAt = now
+        emp.pendingSync = true
+      })
+      this.employees.forEach((emp) => {
+        if (!idSet.has(emp.id) || emp.status !== 'pending') return
+        emp.status = 'syncing'
+        emp.syncingAt = now
+        emp.pendingSync = true
+      })
+    },
+
+    /**
+     * Sync fail / crash recover: syncing → pending, hoặc failed khi hết retry.
+     * Không xóa khỏi queue.
+     */
+    revertQueueSyncing(ids: string[], incrementRetry = true) {
+      const idSet = new Set(ids)
+      const apply = (emp: CheckedInEmployee) => {
+        if (!idSet.has(emp.id) || emp.status !== 'syncing') return
+        const retryCount = incrementRetry ? emp.retryCount + 1 : emp.retryCount
+        const failed = retryCount >= CHECKIN_SYNC_MAX_RETRIES
+        emp.retryCount = retryCount
+        emp.status = failed ? 'failed' : 'pending'
+        emp.syncingAt = null
+        emp.pendingSync = true
+      }
+      this.offlineQueue.forEach(apply)
+      this.employees.forEach(apply)
+    },
+
+    failQueueRecords(ids: string[]) {
+      const idSet = new Set(ids)
+      const apply = (emp: CheckedInEmployee) => {
+        if (!idSet.has(emp.id)) return
+        emp.status = 'failed'
+        emp.syncingAt = null
+        emp.pendingSync = true
+      }
+      this.offlineQueue.forEach(apply)
+      this.employees.forEach(apply)
+    },
+
+    /** QR lại / bấm Sync: cho failed về pending để gửi lại (không gồm đang syncing). */
+    requeueFailedAsPending() {
+      const apply = (emp: CheckedInEmployee) => {
+        if (emp.status !== 'failed') return
+        emp.status = 'pending'
+        emp.retryCount = 0
+        emp.syncingAt = null
+        emp.pendingSync = true
+      }
+      this.offlineQueue.forEach(apply)
+      this.employees.forEach(apply)
+    },
+
+    recoverStaleSyncing() {
+      this.offlineQueue = this.offlineQueue.map((e) => recoverIfStaleSyncing(e))
+      this.employees = this.employees.map((e) => recoverIfStaleSyncing(e))
     },
 
     /** Xóa hết (logout) — kể cả offline queue */
@@ -277,12 +498,14 @@ export const useCheckinListStore = defineStore('checkinList', {
   },
 })
 
-/** Migrate bản cũ: pending trong employees → offlineQueue */
+/** Migrate persist cũ: uuid + status từ pendingSync; recover syncing kẹt. */
 export function migrateCheckinListStore() {
   const store = useCheckinListStore()
   if (!Array.isArray(store.offlineQueue)) store.offlineQueue = []
-  if (!store.offlineQueue.length && Array.isArray(store.employees)) {
-    const pending = store.employees.filter((e) => e.pendingSync)
+  if (!Array.isArray(store.employees)) store.employees = []
+
+  if (!store.offlineQueue.length && store.employees.length) {
+    const pending = store.employees.filter((e) => e.pendingSync || e.status === 'pending')
     if (pending.length) {
       store.offlineQueue = pending.map((e) => ({
         ...e,
@@ -290,10 +513,15 @@ export function migrateCheckinListStore() {
       }))
     }
   }
-  store.employees = (store.employees || []).map((e) => ({
-    ...e,
-    numberPlate: e.numberPlate || '',
-  }))
+
+  const idMap = new Map<string, string>()
+  store.employees = store.employees.map((e, i) => normalizeEmployee(e, i, idMap, false))
+  store.offlineQueue = store.offlineQueue.map((e, i) =>
+    normalizeEmployee(e, i + store.employees.length, idMap, true),
+  )
+
+  store.recoverStaleSyncing()
+
   if (typeof store.activeDisplayPlate !== 'string') {
     store.activeDisplayPlate = ''
   }

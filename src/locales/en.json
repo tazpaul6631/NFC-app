@@ -13,7 +13,7 @@
     "online": "Online",
     "offline": "Offline",
     "offlineBanner": "You are offline. The app still works normally and will sync data automatically when the network is back.",
-    "sessionExpired": "Your session has expired. Please sign in again.",
+    "sessionExpired": "Your session has expired. You can still check in; scan QR again to sync.",
     "serverMaintenance": "Server is under maintenance or unavailable. Please contact IT and try again later.",
     "search": "Search..."
   },
@@ -107,7 +107,8 @@
       "title": "NFC check-in",
       "subtitle": "Have employees tap their staff card on the NFC section on the phone to record boarding.",
       "needScan": "Please scan the vehicle QR code before checking in",
-      "needQrToken": "No login session. Please scan the vehicle QR code (step 1) to get a new token.",
+      "needQrToken": "No login session. You can still check in; scan the vehicle QR (step 1) when you can to sync.",
+      "tokenExpiredBanner": "Token expired — you can still scan. Scan the vehicle QR (step 1) to upload data.",
       "allDone": "All employees have checked in",
       "boarded": "boarded",
       "boardedCount": "Boarded",
@@ -185,6 +186,7 @@
     "CREATE_SUCCESS": "Create successful",
     "CARD_NOT_FOUND": "Card not found",
     "EMPLOYEE_NOT_FOUND": "Employee not found",
-    "CHECK_IN_NOT_AVAILABLE": "Check-in not available"
+    "CHECK_IN_NOT_AVAILABLE": "Check-in not available",
+    "ALREADY_CHECKED_IN": "You have already checked in"
   }
 }

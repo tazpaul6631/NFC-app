@@ -12,7 +12,7 @@ withDefaults(
     size?: string
   }>(),
   {
-    size: '2.25rem',
+    size: '4rem',
   },
 )
 </script>

@@ -13,7 +13,7 @@
     "online": "Trực tuyến",
     "offline": "Ngoại tuyến",
     "offlineBanner": "Bạn đang ở chế độ offline. Hệ thống vẫn hoạt động bình thường và sẽ tự gửi dữ liệu khi có mạng trở lại.",
-    "sessionExpired": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+    "sessionExpired": "Phiên đăng nhập đã hết hạn. Vẫn điểm danh được; quét lại QR để đồng bộ.",
     "serverMaintenance": "Server đang bảo trì hoặc lỗi. Vui lòng liên hệ IT và thử lại sau.",
     "search": "Tìm kiếm..."
   },
@@ -107,7 +107,8 @@
       "title": "Điểm danh NFC",
       "subtitle": "Cho nhân viên chạm thẻ nhân viên vào phần NFC trên điện thoại để ghi nhận lên xe.",
       "needScan": "Vui lòng quét mã QR trên xe trước khi điểm danh",
-      "needQrToken": "Chưa có phiên đăng nhập. Vui lòng quét mã QR trên xe (bước 1) để lấy token mới.",
+      "needQrToken": "Chưa có phiên đăng nhập. Vẫn điểm danh được; quét QR bước 1 khi rảnh để đồng bộ.",
+      "tokenExpiredBanner": "Token hết hạn — vẫn quét được. Quét lại QR (bước 1) để gửi dữ liệu lên server.",
       "allDone": "Đã điểm danh đủ toàn bộ nhân viên",
       "boarded": "đã lên xe",
       "boardedCount": "Đã lên xe",
@@ -185,6 +186,7 @@
     "CREATE_SUCCESS": "Tạo thành công",
     "CARD_NOT_FOUND": "Không tìm thấy thẻ nhân viên",
     "EMPLOYEE_NOT_FOUND": "Không tìm thấy nhân viên",
-    "CHECK_IN_NOT_AVAILABLE": "Bạn không phải làm ca hiện tại"
+    "CHECK_IN_NOT_AVAILABLE": "Bạn không phải làm ca hiện tại",
+    "ALREADY_CHECKED_IN": "Bạn đã điểm danh rồi"
   }
 }

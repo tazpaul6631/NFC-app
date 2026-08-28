@@ -57,6 +57,9 @@
 
           <StepPanel value="2">
             <div class="ck-panel nfc-step">
+              <div v-if="showTokenExpiredBanner" class="token-expired-banner" role="status">
+                {{ t('checkin.nfc.tokenExpiredBanner') }}
+              </div>
               <div class="nfc-connect-card">
                 <div class="nfc-plate-side">
                   <div class="nfc-plate-row">
@@ -139,7 +142,10 @@
                       <div class="recent-info">
                         <div class="recent-name-row">
                           <strong class="recent-name">{{ emp.name ? emp.name : '...' }}</strong>
-                          <span class="recent-time">{{ emp.checkinTime }}</span>
+                          <span class="recent-time">
+                            <span class="recent-time-date">{{ checkinStamp(emp).date }}</span>
+                            <span class="recent-time-clock">{{ checkinStamp(emp).time }}</span>
+                          </span>
                         </div>
                         <small class="recent-code">Id: {{ emp.code ? emp.code : '...' }}</small>
                         <small class="recent-card-number">Card: {{ emp.cardNumber ? emp.cardNumber : '...' }}</small>
@@ -197,17 +203,22 @@ import { useQrScan } from '@/composables/useQrScan'
 import { useNfcScan } from '@/composables/useNfcScan'
 import { useCheckinStepStore } from '@/store/checkinStep'
 import { useAuthStore } from '@/store/auth'
-import { toLocalCheckInTime, useCheckinListStore } from '@/store/checkinList'
+import { formatCheckinDisplay, toLocalCheckInTime, useCheckinListStore } from '@/store/checkinList'
 import driverLoginApi from '@/api/driverLogin'
-import employeeCheckInApi from '@/api/employeeCheckIn'
 import { speakImportantText } from '@/services/ttsService'
 import { resolveApiError, resolveApiMessage } from '@/utils/apiMessage'
+import { runKickCatchUp } from '@/services/kickWatcher'
+import { syncCheckInRecord, syncOfflineQueue, type SyncRecordKind } from '@/services/offlineSyncService'
 
 const { t } = useI18n()
 const toast = useToast()
 const authStore = useAuthStore()
 const checkinListStore = useCheckinListStore()
 const { scannedEmployees, checkedInCount, offlinePendingCount } = storeToRefs(checkinListStore)
+
+const showTokenExpiredBanner = computed(
+  () => authStore.isOnline && !authStore.token?.trim(),
+)
 
 const filterEmployee = ref('')
 
@@ -222,6 +233,10 @@ function matchesEmployeeFilter(
       .toLowerCase()
       .includes(q),
   )
+}
+
+function checkinStamp(emp: { checkinAt: string; checkinTime: string }) {
+  return formatCheckinDisplay(emp.checkinAt, emp.checkinTime)
 }
 
 /** List điểm danh ca hiện tại — filter theo name / code / cardNumber */
@@ -407,6 +422,7 @@ async function loginWithNumberPlate(numberPlate: string) {
     await fetchAndCacheNumberPlates()
     proceedToNfcStep()
     openOfflineSyncPrompt()
+    void syncOfflineQueue({ silent: true, retryFailed: true })
     return true
   } catch (err) {
     toast.add({
@@ -564,64 +580,102 @@ function currentNumberPlate() {
   return (vehicle.plate || authStore.numberPlate || checkinListStore.activeDisplayPlate || '').trim()
 }
 
-/**
- * Online mà không có token → chặn gọi API, đá về step 1 bắt scan QR lấy token mới.
- * Offline vẫn cho điểm danh (lưu queue).
- */
-function ensureOnlineTokenOrBlock(summaryKey: 'checkin.nfc.barcode' | 'checkin.nfc.title') {
-  if (!authStore.isOnline) return true
-  if (authStore.token?.trim()) return true
+/** Clear list UI sót ca/ngày trước trước khi FE check trùng. */
+function ensureFreshDisplayForCheckIn() {
+  runKickCatchUp()
+}
 
+function alreadyCheckedInMessage() {
+  return t('error.ALREADY_CHECKED_IN')
+}
+
+function toastDuplicate(summaryKey: 'checkin.nfc.barcode' | 'checkin.nfc.title') {
+  const detail = alreadyCheckedInMessage()
+  void speakImportantText(detail)
   toast.add({
     severity: 'warn',
     summary: t(summaryKey),
-    detail: t('checkin.nfc.needQrToken'),
-    life: 4000,
+    detail,
+    life: 2800,
   })
-  checkinStepStore.setStep('1')
-  return false
 }
 
-/** Lỗi mạng / server (không phải 401 / lỗi nghiệp vụ 4xx) → lưu offline để không mất lần quét. */
-function shouldFallbackOffline(err: unknown): boolean {
-  if (!err || typeof err !== 'object') return true
-  const ax = err as { response?: { status?: number } }
-  const status = ax.response?.status
-  if (status == null) return true
-  if (status === 401) return false
-  if (status >= 500) return true
-  return false
-}
-
-function saveOfflineCheckIn(
+/**
+ * Local-first: ghi queue + list ngay.
+ * NFC không chờ API (nhánh failed ẩn list + TTS thử lại, không cảm ơn).
+ * Barcode/nhập tay chờ sync để toast đúng.
+ */
+async function enqueueLocalCheckIn(
   payload: { employeeId: string; employeeName: string; cardNumber: string },
   numberPlate: string,
   summaryKey: 'checkin.nfc.barcode' | 'checkin.nfc.title',
-  /** true = app đang offline có chủ đích; false = online nhưng API/mạng fail → fallback */
-  intentionalOffline = false,
+  waitForSync = false,
 ) {
-  checkinListStore.addEmployee(
+  const emp = checkinListStore.enqueueCheckIn(
     {
       ...payload,
       checkInTime: toLocalCheckInTime(),
     },
-    true,
     numberPlate,
   )
+  if (!emp) {
+    toastDuplicate(summaryKey)
+    return false
+  }
+
+  const label = payload.employeeName || payload.employeeId || payload.cardNumber
+  const canSyncNow = authStore.isOnline && Boolean(authStore.token?.trim())
+
+  if (!canSyncNow) {
+    void speakImportantText('Xin cảm ơn')
+    toast.add({
+      severity: 'success',
+      summary: t(summaryKey),
+      detail: `${label} — ${t('checkin.sync.pendingTag')}`,
+      life: 2200,
+    })
+    return true
+  }
+
+  if (!waitForSync) {
+    void syncCheckInRecord(emp.id).then((kind) => {
+      applyCheckInSyncFeedback(kind, summaryKey, label)
+    })
+    return true
+  }
+
+  const kind = await syncCheckInRecord(emp.id)
+  return applyCheckInSyncFeedback(kind, summaryKey, label)
+}
+
+function applyCheckInSyncFeedback(
+  kind: SyncRecordKind,
+  summaryKey: 'checkin.nfc.barcode' | 'checkin.nfc.title',
+  label: string,
+) {
+  if (kind === 'already') {
+    toastDuplicate(summaryKey)
+    return false
+  }
+  if (kind === 'failed') {
+    void speakImportantText('Xin thử lại')
+    return false
+  }
+
   void speakImportantText('Xin cảm ơn')
-  const tag = intentionalOffline
-    ? t('checkin.sync.pendingTag')
-    : t('checkin.sync.savedOfflineFallback')
+  const pending = kind === 'retry' || kind === 'skipped'
   toast.add({
-    severity: intentionalOffline ? 'success' : 'warn',
+    severity: 'success',
     summary: t(summaryKey),
-    detail: `${payload.employeeName || payload.employeeId || payload.cardNumber} — ${tag}`,
-    life: 2800,
+    detail: `${label} — ${pending ? t('checkin.sync.pendingTag') : t('checkin.list.checkedTag')}`,
+    life: 2200,
   })
   return true
 }
 
 async function checkInByEmployeeId(employeeId: string) {
+  ensureFreshDisplayForCheckIn()
+
   const numberPlate = currentNumberPlate()
   if (!numberPlate) {
     toast.add({
@@ -633,148 +687,29 @@ async function checkInByEmployeeId(employeeId: string) {
     return false
   }
 
-  if (checkinListStore.isAlreadyCheckedIn(employeeId, numberPlate)) {
-    void speakImportantText(t('checkin.nfc.alreadyCheckedIn'))
-    toast.add({
-      severity: 'warn',
-      summary: t('checkin.nfc.barcode'),
-      detail: t('checkin.nfc.alreadyCheckedIn'),
-      life: 2800,
-    })
-    return false
-  }
+  const code = employeeId.trim().toUpperCase()
+  if (!code) return false
 
-  if (!authStore.isOnline) {
-    return saveOfflineCheckIn(
-      { employeeId, employeeName: employeeId, cardNumber: '' },
-      numberPlate,
-      'checkin.nfc.barcode',
-      true,
-    )
-  }
-
-  if (!ensureOnlineTokenOrBlock('checkin.nfc.barcode')) return false
-
-  showLoader(t('checkin.loading.nfc'))
-  try {
-    const { data: body } = await employeeCheckInApi.createCheckInByEmployeeId({
-      numberPlate,
-      employeeId,
-    })
-
-    if (!body?.success || !body.data) {
-      void speakImportantText('Xin thử lại')
-      toast.add({
-        severity: 'warn',
-        summary: t('checkin.nfc.barcode'),
-        detail: resolveApiMessage(body, 'checkin.nfc.checkInFailed'),
-        life: 3500,
-      })
-      return false
-    }
-
-    checkinListStore.addEmployee(body.data, false, numberPlate)
-    void speakImportantText('Xin cảm ơn')
-    toast.add({
-      severity: 'success',
-      summary: t('checkin.nfc.barcode'),
-      detail: `${body.data.employeeName} — ${t('checkin.list.checkedTag')}`,
-      life: 2200,
-    })
-    return true
-  } catch (err) {
-    if (shouldFallbackOffline(err)) {
-      return saveOfflineCheckIn(
-        { employeeId, employeeName: employeeId, cardNumber: '' },
-        numberPlate,
-        'checkin.nfc.barcode',
-      )
-    }
-    void speakImportantText('Xin thử lại')
-    toast.add({
-      severity: 'error',
-      summary: t('checkin.nfc.barcode'),
-      detail: resolveApiError(err, 'checkin.nfc.checkInFailed'),
-      life: 3500,
-    })
-    return false
-  } finally {
-    hideLoader()
-  }
+  return enqueueLocalCheckIn(
+    { employeeId: code, employeeName: code, cardNumber: '' },
+    numberPlate,
+    'checkin.nfc.barcode',
+    true,
+  )
 }
 
 async function checkInByCardNumber(cardNumber: string) {
+  ensureFreshDisplayForCheckIn()
+
   const numberPlate = currentNumberPlate()
   if (!numberPlate || !cardNumber) return false
 
-  if (checkinListStore.isAlreadyCheckedIn(cardNumber, numberPlate)) {
-    void speakImportantText(t('checkin.nfc.alreadyCheckedIn'))
-    toast.add({
-      severity: 'warn',
-      summary: t('checkin.nfc.title'),
-      detail: t('checkin.nfc.alreadyCheckedIn'),
-      life: 2800,
-    })
-    return false
-  }
-
-  if (!authStore.isOnline) {
-    return saveOfflineCheckIn(
-      { employeeId: '', employeeName: cardNumber, cardNumber },
-      numberPlate,
-      'checkin.nfc.title',
-      true,
-    )
-  }
-
-  if (!ensureOnlineTokenOrBlock('checkin.nfc.title')) return false
-
-  showLoader(t('checkin.loading.nfc'))
-  try {
-    const { data: body } = await employeeCheckInApi.createCheckInByCardId({
-      numberPlate,
-      cardNumber,
-    })
-
-    if (!body?.success || !body.data) {
-      void speakImportantText('Xin thử lại')
-      toast.add({
-        severity: 'warn',
-        summary: t('checkin.nfc.title'),
-        detail: resolveApiMessage(body, 'checkin.nfc.checkInFailed'),
-        life: 3500,
-      })
-      return false
-    }
-
-    checkinListStore.addEmployee(body.data, false, numberPlate)
-    void speakImportantText('Xin cảm ơn')
-    toast.add({
-      severity: 'success',
-      summary: t('checkin.nfc.title'),
-      detail: `${body.data.employeeName} — ${t('checkin.list.checkedTag')}`,
-      life: 2200,
-    })
-    return true
-  } catch (err) {
-    if (shouldFallbackOffline(err)) {
-      return saveOfflineCheckIn(
-        { employeeId: '', employeeName: cardNumber, cardNumber },
-        numberPlate,
-        'checkin.nfc.title',
-      )
-    }
-    void speakImportantText('Xin thử lại')
-    toast.add({
-      severity: 'error',
-      summary: t('checkin.nfc.title'),
-      detail: resolveApiError(err, 'checkin.nfc.checkInFailed'),
-      life: 3500,
-    })
-    return false
-  } finally {
-    hideLoader()
-  }
+  return enqueueLocalCheckIn(
+    { employeeId: '', employeeName: cardNumber, cardNumber },
+    numberPlate,
+    'checkin.nfc.title',
+    false,
+  )
 }
 
 const nfcConnecting = ref(false)
@@ -1108,6 +1043,18 @@ onUnmounted(() => {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+.token-expired-banner {
+  flex-shrink: 0;
+  margin: 0 0 0.6rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--p-orange-100, #ffedd5) 88%, white);
+  color: var(--p-orange-800, #9a3412);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 .plate-tag {
@@ -1691,9 +1638,23 @@ onUnmounted(() => {
 .recent-time,
 .employee-time {
   flex-shrink: 0;
-  font-size: 0.78rem;
-  color: var(--vip-accent-green);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.05rem;
+  line-height: 1.2;
   font-weight: 600;
+  color: var(--vip-accent-green);
+}
+
+.recent-time-date {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--vip-muted);
+}
+
+.recent-time-clock {
+  font-size: 0.78rem;
 }
 
 .recent-code {
