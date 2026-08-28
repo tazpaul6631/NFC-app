@@ -11,12 +11,14 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       ANDROID_BUILD_TOOLS_VERSION: "35.0.0"
-      # Play đã có versionCode 2 → CI dùng run_number + base (luôn tăng, không race)
-      VERSION_CODE_BASE: "2"
+      # Play đã có versionCode 22 → cộng thêm mốc này để chắc chắn không bao giờ trùng
+      VERSION_CODE_BASE: "25"
 
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # cần full history để đếm số commit chính xác
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -60,15 +62,19 @@ jobs:
           mkdir -p android/keystore
           echo "$KEYSTORE_BASE64" | base64 -d > android/keystore/checkin-bus-release.jks
 
-      # APK (cài tay) + AAB (Play Store), cùng keystore; versionCode = run_number + VERSION_CODE_BASE
+      # APK (cài tay) + AAB (Play Store), cùng keystore.
+      # versionCode = số lượng commit trong repo + VERSION_CODE_BASE
+      # → LUÔN tăng chỉ khi có commit mới thật sự, không đổi dù re-run job
+      #   nhiều lần (khác với dùng github.run_number, vốn không tăng khi re-run).
       - name: Build Android APK and App Bundle (Release)
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          VERSION_CODE=$(( ${{ github.run_number }} + VERSION_CODE_BASE ))
-          echo "Building versionCode=${VERSION_CODE} versionName=1.0.1 (run_number=${{ github.run_number }})"
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          VERSION_CODE=$(( COMMIT_COUNT + VERSION_CODE_BASE ))
+          echo "Building versionCode=${VERSION_CODE} versionName=1.0.1 (commit_count=${COMMIT_COUNT})"
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease bundleRelease \
