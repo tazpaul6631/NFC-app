@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
-  appId: 'com.jiahsin.vip',
+  appId: 'com.jiahsin.bus',
   appName: 'Bus Check-in',
   webDir: 'dist',
   plugins: {

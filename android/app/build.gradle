@@ -7,7 +7,10 @@ android {
         applicationId "com.jiahsin.bus"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
+        // CI: -PappVersionCode=N (github.run_number + VERSION_CODE_BASE). Local: 2
+        versionCode project.hasProperty('appVersionCode')
+            ? project.property('appVersionCode').toInteger()
+            : 2
         versionName "1.0.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

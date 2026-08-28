@@ -11,6 +11,8 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       ANDROID_BUILD_TOOLS_VERSION: "35.0.0"
+      # Play đã có versionCode 2 → CI dùng run_number + base (luôn tăng, không race)
+      VERSION_CODE_BASE: "2"
 
     steps:
       - name: Checkout Source Code
@@ -58,16 +60,19 @@ jobs:
           mkdir -p android/keystore
           echo "$KEYSTORE_BASE64" | base64 -d > android/keystore/checkin-bus-release.jks
 
-      # APK (cài tay) + AAB (Play Store), cùng keystore
+      # APK (cài tay) + AAB (Play Store), cùng keystore; versionCode = run_number + VERSION_CODE_BASE
       - name: Build Android APK and App Bundle (Release)
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          VERSION_CODE=$(( ${{ github.run_number }} + VERSION_CODE_BASE ))
+          echo "Building versionCode=${VERSION_CODE} versionName=1.0.1 (run_number=${{ github.run_number }})"
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease bundleRelease \
+            -PappVersionCode=$VERSION_CODE \
             -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/android/keystore/checkin-bus-release.jks \
             -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
             -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
