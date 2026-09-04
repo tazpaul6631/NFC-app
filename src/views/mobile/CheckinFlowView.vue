@@ -657,7 +657,7 @@ function applyCheckInSyncFeedback(
     toastDuplicate(summaryKey)
     return false
   }
-  if (kind === 'failed') {
+  if (kind === 'failed' || kind === 'unavailable') {
     void speakImportantText('Xin thử lại')
     return false
   }

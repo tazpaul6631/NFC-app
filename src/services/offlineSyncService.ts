@@ -9,7 +9,7 @@ let syncing = false
 /** Uuid đang gọi API — chặn sync 1 record vs vòng queue đụng nhau */
 const inflightIds = new Set<string>()
 
-export type SyncRecordKind = 'synced' | 'already' | 'retry' | 'failed' | 'skipped'
+export type SyncRecordKind = 'synced' | 'already' | 'retry' | 'failed' | 'skipped' | 'unavailable'
 
 export function isOfflineSyncing() {
   return syncing
@@ -22,6 +22,10 @@ function payloadStatus(body: { status?: string | null } | null | undefined) {
 function isAlreadyRecorded(body: { status?: string | null } | null | undefined) {
   const status = payloadStatus(body)
   return status === 'ALREADY_CHECKED_IN' || status === 'CHECK_IN_ALREADY_RECORDED'
+}
+
+function isCheckInNotAvailable(body: { status?: string | null } | null | undefined) {
+  return payloadStatus(body) === 'CHECK_IN_NOT_AVAILABLE'
 }
 
 function errorPayload(err: unknown) {
@@ -96,6 +100,19 @@ export async function syncCheckInRecord(
         return 'already'
       }
 
+      if (isCheckInNotAvailable(body)) {
+        checkinList.dropCheckInRecords(ids)
+        if (notify) {
+          showAppToast({
+            severity: 'warn',
+            summary: String(t('checkin.nfc.title')),
+            detail: resolveApiMessage(body, 'error.CHECK_IN_NOT_AVAILABLE'),
+            life: 3500,
+          })
+        }
+        return 'unavailable'
+      }
+
       if (!body?.success || !body.data) {
         checkinList.failQueueRecords(ids)
         if (notify) {
@@ -128,6 +145,19 @@ export async function syncCheckInRecord(
           ids,
         )
         return 'already'
+      }
+
+      if (isCheckInNotAvailable(errorPayload(err))) {
+        checkinList.dropCheckInRecords(ids)
+        if (notify) {
+          showAppToast({
+            severity: 'warn',
+            summary: String(t('checkin.nfc.title')),
+            detail: resolveApiError(err, 'error.CHECK_IN_NOT_AVAILABLE'),
+            life: 3500,
+          })
+        }
+        return 'unavailable'
       }
 
       const status = httpStatus(err)
@@ -183,12 +213,14 @@ export async function syncOfflineQueue(options?: {
   let synced = 0
   let already = 0
   let failed = 0
+  let unavailable = 0
   try {
     for (const id of pendingIds) {
       const kind = await syncCheckInRecord(id, { notify: false })
       if (kind === 'synced') synced++
       else if (kind === 'already') already++
       else if (kind === 'failed') failed++
+      else if (kind === 'unavailable') unavailable++
     }
 
     if (synced > 0) {
@@ -203,6 +235,13 @@ export async function syncOfflineQueue(options?: {
         severity: 'warn',
         summary: String(t('checkin.sync.title')),
         detail: String(t('checkin.sync.failed')),
+        life: 3200,
+      })
+    } else if (unavailable > 0 && !options?.silent) {
+      showAppToast({
+        severity: 'warn',
+        summary: String(t('checkin.sync.title')),
+        detail: String(t('error.CHECK_IN_NOT_AVAILABLE')),
         life: 3200,
       })
     } else if (already > 0 && !options?.silent) {

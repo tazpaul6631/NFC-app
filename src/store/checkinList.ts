@@ -464,6 +464,16 @@ export const useCheckinListStore = defineStore('checkinList', {
       this.employees.forEach(apply)
     },
 
+    /** BE CHECK_IN_NOT_AVAILABLE — gỡ display + queue (retry không lên được ca). */
+    dropCheckInRecords(ids: string[]) {
+      const idSet = new Set(ids)
+      this.employees = this.employees.filter((e) => !idSet.has(e.id))
+      this.offlineQueue = this.offlineQueue.filter((e) => !idSet.has(e.id))
+      if (this.offlineQueue.length === 0) {
+        this.reminderModalVisible = false
+      }
+    },
+
     /** QR lại / bấm Sync: cho failed về pending để gửi lại (không gồm đang syncing). */
     requeueFailedAsPending() {
       const apply = (emp: CheckedInEmployee) => {
