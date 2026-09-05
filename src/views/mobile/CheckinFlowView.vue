@@ -658,7 +658,7 @@ function applyCheckInSyncFeedback(
     return false
   }
   if (kind === 'failed' || kind === 'unavailable') {
-    void speakImportantText('Xin thử lại')
+    void speakImportantText('Xin thử lại. Bạn không phải làm ca hiện tại!')
     return false
   }
 
