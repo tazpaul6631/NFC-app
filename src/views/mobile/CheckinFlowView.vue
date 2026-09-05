@@ -461,7 +461,6 @@ const barcodeFormats = [
   BarcodeFormat.Code93,
   BarcodeFormat.Ean13,
   BarcodeFormat.Ean8,
-  BarcodeFormat.QrCode,
 ]
 
 async function handleScanClick() {
