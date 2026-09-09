@@ -83,6 +83,8 @@
       "hintOffline": "選擇車牌號碼",
       "hintSelectOnline": "如果沒有車牌號碼，請掃描車輛上的 QR Code (有 Wifi 或 4G)",
       "hintSelectOffline": "如果沒有車牌號碼，請檢查網路並重試",
+      "hintNeedQr": "Token 已過期。請掃描車輛上的 QR Code 重新登入（需 Wifi 或 4G）。",
+      "tokenRejectedAfterLogin": "QR 登入成功，但新 Token 無法用於點名。請重新掃描 QR Code。",
       "selectPlatePlaceholder": "選擇車牌號碼",
       "doneLabel": "已掃描車牌",
       "scanButton": "掃描 QR",

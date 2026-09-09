@@ -40,12 +40,14 @@
 
                 <Select v-if="offlineVehicleOptions" v-model="selectedPlate" :options="offlineVehicleOptions"
                   option-label="label" option-value="value" :placeholder="t('checkin.scan.selectPlatePlaceholder')"
-                  class="offline-plate-select" size="large" :disabled="scanning"
+                  class="offline-plate-select" size="large" :disabled="scanning || showTokenExpiredBanner"
                   @update:model-value="onOfflinePlateSelect" filter />
                 <small v-if="offlineVehicleOptions" class="scan-hint-text"><strong><span class="text-danger">*</span>
                     {{
-                      authStore.isOnline ?
-                        t('checkin.scan.hintSelectOnline') : t('checkin.scan.hintSelectOffline')
+                      showTokenExpiredBanner ?
+                        t('checkin.scan.hintNeedQr') :
+                        authStore.isOnline ?
+                          t('checkin.scan.hintSelectOnline') : t('checkin.scan.hintSelectOffline')
                     }}</strong></small>
                 <Button v-if="authStore.isOnline" :label="t('checkin.scan.scanButton')" size="large" :loading="scanning"
                   @click="handleScanClick" class="scan-button">
@@ -422,7 +424,15 @@ async function loginWithNumberPlate(numberPlate: string) {
     await fetchAndCacheNumberPlates()
     proceedToNfcStep()
     openOfflineSyncPrompt()
-    void syncOfflineQueue({ silent: true, retryFailed: true })
+    await syncOfflineQueue({ silent: true, retryFailed: true })
+    if (!authStore.token?.trim()) {
+      toast.add({
+        severity: 'warn',
+        summary: t('checkin.scan.title'),
+        detail: t('checkin.scan.tokenRejectedAfterLogin'),
+        life: 5000,
+      })
+    }
     return true
   } catch (err) {
     toast.add({
@@ -437,6 +447,16 @@ async function loginWithNumberPlate(numberPlate: string) {
 
 function onOfflinePlateSelect(plate: string | null) {
   if (!plate || scanning.value) return
+  if (showTokenExpiredBanner.value) {
+    selectedPlate.value = null
+    toast.add({
+      severity: 'warn',
+      summary: t('checkin.scan.title'),
+      detail: t('checkin.scan.hintNeedQr'),
+      life: 4000,
+    })
+    return
+  }
   const next = plate.trim()
   vehicle.plate = next
   authStore.numberPlate = next

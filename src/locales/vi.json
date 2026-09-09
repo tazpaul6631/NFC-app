@@ -83,6 +83,8 @@
       "hintOffline": "Chọn biển số xe của bạn",
       "hintSelectOnline": "Nếu không có biển số xe, vui lòng quét mã QR trên xe của bạn (có Wifi hoặc 4G)",
       "hintSelectOffline": "Nếu không có biển số xe, vui lòng kiểm tra lại mạng và thử lại",
+      "hintNeedQr": "Token đã hết hạn. Vui lòng quét mã QR trên xe để đăng nhập lại (cần Wifi hoặc 4G).",
+      "tokenRejectedAfterLogin": "Đăng nhập QR thành công nhưng token mới không dùng được cho điểm danh. Vui lòng quét lại mã QR.",
       "selectPlatePlaceholder": "Chọn biển số xe",
       "doneLabel": "Đã quét biển số xe",
       "scanButton": "Quét mã QR",

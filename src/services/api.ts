@@ -17,6 +17,24 @@ export const SLOW_API_TIMEOUT = 30000
 
 const t = (key: string) => String(i18n.global.t(key))
 
+function requestAuthToken(config: AxiosError['config']): string {
+  if (!config) return ''
+  const tagged = (config as { vipAuthToken?: string }).vipAuthToken
+  if (tagged?.trim()) return tagged.trim()
+  const headers = config.headers as { get?: (k: string) => string; Authorization?: string; authorization?: string } | undefined
+  const raw = String(
+    headers?.get?.('Authorization') || headers?.Authorization || headers?.authorization || '',
+  )
+  return raw.replace(/^Bearer\s+/i, '').trim()
+}
+
+/** 401 của request cũ không được xóa token vừa login. */
+function isStaleUnauthorized(error: AxiosError, currentToken: string): boolean {
+  const used = requestAuthToken(error.config)
+  const current = currentToken.trim()
+  return Boolean(used && current && used !== current)
+}
+
 function isLoginApiRequest(error: AxiosError) {
   const url = String(error.config?.url || '').toLowerCase()
   return (
@@ -53,6 +71,7 @@ api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
 
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`
+    ;(config as InternalAxiosRequestConfig & { vipAuthToken?: string }).vipAuthToken = token
   }
 
   return config
@@ -86,7 +105,7 @@ api.interceptors.response.use(
 
     // Token hết hạn / không hợp lệ — chỉ xóa token + về step 1, giữ offline queue
     if (status === 401) {
-      if (!isLoginApiRequest(error)) {
+      if (!isLoginApiRequest(error) && !isStaleUnauthorized(error, authStore.token || '')) {
         notifySessionExpiredToast(t('common.sessionExpired'), t('common.warning'))
         await authStore.clearSession()
       }

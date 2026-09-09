@@ -83,6 +83,8 @@
       "hintOffline": "Select vehicle plate",
       "hintSelectOnline": "If no vehicle plate, please scan the QR code on the vehicle (has Wifi or 4G)",
       "hintSelectOffline": "If no vehicle plate, please check the network and try again",
+      "hintNeedQr": "Token expired. Please scan the QR code on the vehicle to log in again (needs Wi-Fi or 4G).",
+      "tokenRejectedAfterLogin": "QR login succeeded, but the new token cannot be used for check-in. Please scan the QR code again.",
       "selectPlatePlaceholder": "Select vehicle plate",
       "doneLabel": "Vehicle plate scanned",
       "scanButton": "Scan QR",
