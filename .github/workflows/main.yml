@@ -62,7 +62,7 @@ jobs:
           mkdir -p android/keystore
           echo "$KEYSTORE_BASE64" | base64 -d > android/keystore/checkin-bus-release.jks
 
-      # APK (cài tay) + AAB (Play Store), cùng keystore.
+      # APK (cài tay) + AAB (chưa dùng, giữ lại phòng khi cần), cùng keystore.
       # versionCode = số lượng commit trong repo + VERSION_CODE_BASE
       # → LUÔN tăng chỉ khi có commit mới thật sự, không đổi dù re-run job
       #   nhiều lần (khác với dùng github.run_number, vốn không tăng khi re-run).
@@ -98,14 +98,14 @@ jobs:
           path: android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 7
 
-      # Tự động đẩy lên Google Play (kênh Internal testing).
-      # LƯU Ý: chỉ hoạt động sau khi đã nộp bản đầu tiên THỦ CÔNG qua web
-      # (Google Play Developer API không cho tạo release đầu tiên của app).
-      - name: Upload to Google Play (Internal testing)
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_CONFIG_JSON }}
-          packageName: com.jiahsin.bus
-          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
-          track: internal
-          status: completed
+      # Bước "Upload to Google Play" đã được BỎ.
+      # Muốn đẩy lên Play Console (Internal/Closed testing) trở lại, thêm lại bước sau:
+      #
+      # - name: Upload to Google Play (Internal testing)
+      #   uses: r0adkll/upload-google-play@v1
+      #   with:
+      #     serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_CONFIG_JSON }}
+      #     packageName: com.jiahsin.bus
+      #     releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+      #     track: internal
+      #     status: completed
