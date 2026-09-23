@@ -17,12 +17,12 @@ export function applyKickReset() {
 }
 
 /**
- * Catch-up: mở app / resume sau khi đã qua mốc đá mà ca cũ chưa reset.
- * VD: ca 13:00, mở app lúc 15:00 → reset vì đã qua 14:00.
+ * Catch-up: đã qua mốc đá mà ca cũ chưa reset (list hoặc trip).
+ * List rỗng nhưng trip còn giờ ca trước → vẫn về step 1.
  */
 export function runKickCatchUp(): boolean {
   const store = useCheckinListStore()
-  if (!store.employees.length) return false
+  if (!store.employees.length && !store.tripStartedAt) return false
 
   const stale = isDisplayStaleForKick(
     store.tripStartedAt,
@@ -35,9 +35,9 @@ export function runKickCatchUp(): boolean {
 }
 
 /**
- * Poll mỗi 15s: mốc đá → reset display (+ step 1);
+ * Poll mỗi 15s: catch-up ca cũ mỗi tick (bỏ lỡ phút / nhảy giờ);
+ * đúng mốc đá → reset cả khi list rỗng;
  * T−10' → modal nhắc nếu còn offlineQueue.
- * Kick & reminder: không persist theo ngày — chỉ tránh spam trong cùng phút (RAM).
  */
 export function startKickWatcher() {
   const store = useCheckinListStore()
@@ -50,14 +50,16 @@ export function startKickWatcher() {
   const tick = () => {
     const currentMinute = getVNMinutesNow()
 
-    if (kickMinutes.includes(currentMinute)) {
-      if (lastKickMinute === currentMinute) return
-      lastKickMinute = currentMinute
-      applyKickReset()
-      return
-    }
+    runKickCatchUp()
 
-    lastKickMinute = null
+    if (kickMinutes.includes(currentMinute)) {
+      if (lastKickMinute !== currentMinute) {
+        lastKickMinute = currentMinute
+        applyKickReset()
+      }
+    } else {
+      lastKickMinute = null
+    }
 
     if (reminderMinutes.includes(currentMinute)) {
       if (lastReminderMinute === currentMinute) return

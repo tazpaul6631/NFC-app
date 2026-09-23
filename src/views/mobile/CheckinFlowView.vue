@@ -320,6 +320,7 @@ const vehicle = reactive({
 
 function proceedToNfcStep() {
   completedSteps.add('1')
+  runKickCatchUp()
   checkinListStore.startTrip()
   checkinStepStore.setStep('2')
 }

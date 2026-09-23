@@ -2,6 +2,7 @@ import employeeCheckInApi, { type EmployeeCheckInResult } from '@/api/employeeCh
 import { useCheckinListStore } from '@/store/checkinList'
 import { useAuthStore } from '@/store/auth'
 import { showAppToast } from '@/services/toastBridge'
+import { speakImportantText } from '@/services/ttsService'
 import i18n from '@/i18n'
 import { resolveApiError, resolveApiMessage } from '@/utils/apiMessage'
 
@@ -197,7 +198,19 @@ export async function syncOfflineQueue(options?: {
   const authStore = useAuthStore()
   const t = i18n.global.t
 
-  if (syncing || !authStore.isOnline || !authStore.token?.trim()) return false
+  if (syncing) return false
+  if (!authStore.isOnline) return false
+  if (!authStore.token?.trim()) {
+    if (!options?.silent) {
+      showAppToast({
+        severity: 'warn',
+        summary: String(t('checkin.sync.title')),
+        detail: String(t('checkin.scan.hintNeedQr')),
+        life: 4000,
+      })
+    }
+    return false
+  }
 
   if (options?.retryFailed) {
     checkinList.requeueFailedAsPending()
@@ -223,35 +236,51 @@ export async function syncOfflineQueue(options?: {
       else if (kind === 'unavailable') unavailable++
     }
 
-    if (synced > 0) {
+    const summary = String(t('checkin.sync.title'))
+    // silent = tắt toast thành công (mạng lên / resume). Lỗi BE vẫn báo.
+    if (synced > 0 && !options?.silent) {
       showAppToast({
         severity: 'success',
-        summary: String(t('checkin.sync.title')),
+        summary,
         detail: String(t('checkin.sync.successToast')),
         life: 2200,
       })
-    } else if (failed > 0 && !options?.silent) {
+    }
+    if (unavailable > 0) {
       showAppToast({
         severity: 'warn',
-        summary: String(t('checkin.sync.title')),
-        detail: String(t('checkin.sync.failed')),
-        life: 3200,
-      })
-    } else if (unavailable > 0 && !options?.silent) {
-      showAppToast({
-        severity: 'warn',
-        summary: String(t('checkin.sync.title')),
+        summary,
         detail: String(t('error.CHECK_IN_NOT_AVAILABLE')),
-        life: 3200,
+        life: 3500,
       })
-    } else if (already > 0 && !options?.silent) {
+    }
+    if (already > 0) {
       showAppToast({
         severity: 'warn',
-        summary: String(t('checkin.sync.title')),
+        summary,
         detail: String(t('error.ALREADY_CHECKED_IN')),
         life: 3200,
       })
     }
+    if (failed > 0) {
+      showAppToast({
+        severity: 'warn',
+        summary,
+        detail: String(t('checkin.sync.failed')),
+        life: 3200,
+      })
+    }
+
+    if (unavailable > 0) {
+      void speakImportantText('Xin thử lại. Bạn không phải làm ca hiện tại!')
+    } else if (already > 0) {
+      void speakImportantText(String(t('error.ALREADY_CHECKED_IN')))
+    } else if (failed > 0) {
+      void speakImportantText('Xin thử lại. Bạn không phải làm ca hiện tại!')
+    } else if (synced > 0 && !options?.silent) {
+      void speakImportantText('Xin cảm ơn')
+    }
+
     return synced > 0 || already > 0
   } finally {
     syncing = false

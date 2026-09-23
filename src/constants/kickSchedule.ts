@@ -91,35 +91,18 @@ export function isCheckinAtInCurrentKickWindow(iso: string, date = new Date()): 
 
 /**
  * Ca hiện tại cần reset (catch-up):
- * - Timestamp display thuộc ngày VN trước hôm nay → stale (qua đêm / bỏ lỡ kick)
- * - Cùng ngày và bắt đầu trước mốc đá gần nhất đã qua → stale
+ * - Trip hoặc bất kỳ NV display ngoài cửa sổ ca (ngày trước / trước mốc đá đã qua)
+ * - tripStartedAt mới không được che record cũ
  */
 export function isDisplayStaleForKick(
   tripStartedAt: string | null,
   employeeCheckinAts: string[],
   date = new Date(),
 ): boolean {
-  const todayKey = getVNDateKey(date)
-  const allIsos = [...(tripStartedAt ? [tripStartedAt] : []), ...employeeCheckinAts]
-
-  for (const iso of allIsos) {
-    const dateKey = getDateKeyFromLocalIso(iso)
-    if (dateKey && dateKey < todayKey) return true
-  }
-
-  const latestKick = getLatestPassedKickMinute(date)
-  if (latestKick === null) return false
-
-  let tripMinutes: number | null = null
-  if (tripStartedAt) {
-    tripMinutes = getVNMinutesFromLocalIso(tripStartedAt)
-  } else if (employeeCheckinAts.length) {
-    for (const iso of employeeCheckinAts) {
-      const m = getVNMinutesFromLocalIso(iso)
-      if (m !== null && (tripMinutes === null || m < tripMinutes)) tripMinutes = m
-    }
-  }
-
-  if (tripMinutes === null) return false
-  return tripMinutes < latestKick
+  const stamps = [
+    ...(tripStartedAt ? [tripStartedAt] : []),
+    ...employeeCheckinAts,
+  ]
+  if (!stamps.length) return false
+  return stamps.some((iso) => !isCheckinAtInCurrentKickWindow(iso, date))
 }

@@ -10,6 +10,9 @@
         }}
       </p>
       <p v-else class="sync-subtitle">{{ t('checkin.sync.empty') }}</p>
+      <p v-if="offlinePendingCount && authStore.isOnline && !hasToken" class="sync-subtitle">
+        {{ t('checkin.scan.hintNeedQr') }}
+      </p>
 
       <IconField v-if="offlinePendingEmployees.length" class="scanned-list-filter-wrap sync-list-filter">
         <InputText v-model="filterOfflineEmployee" class="scanned-list-filter" :placeholder="t('common.search')" />
@@ -59,7 +62,7 @@
     <template #footer>
       <Button :label="t('common.cancel')" severity="secondary" size="large" @click="close" />
       <Button :label="t('checkin.sync.syncButton')" icon="pi pi-sync" :loading="syncing"
-        :disabled="!offlinePendingCount || !authStore.isOnline" size="large" @click="onSync" />
+        :disabled="!canManualSync" size="large" @click="onSync" />
     </template>
   </Dialog>
 </template>
@@ -103,6 +106,11 @@ const isReminder = computed(() => props.isReminder)
 
 const visible = computed(() =>
   isReminder.value ? reminderModalVisible.value : Boolean(props.modelValue),
+)
+
+const hasToken = computed(() => Boolean(authStore.token?.trim()))
+const canManualSync = computed(
+  () => Boolean(offlinePendingCount.value) && authStore.isOnline && hasToken.value,
 )
 
 function onVisibleUpdate(v: boolean) {
@@ -164,7 +172,7 @@ watch(offlinePendingCount, (count) => {
 })
 
 async function onSync() {
-  if (syncing.value || isOfflineSyncing()) return
+  if (syncing.value || isOfflineSyncing() || !canManualSync.value) return
   syncing.value = true
   try {
     const ok = await syncOfflineQueue({ silent: false, retryFailed: true })
